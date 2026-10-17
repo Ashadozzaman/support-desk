@@ -26,4 +26,15 @@ enum TicketStatus: string
             self::Closed => false,
         };
     }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Open => 'Open',
+            self::InProgress => 'In progress',
+            self::WaitingForCustomer => 'Waiting for customer',
+            self::Resolved => 'Resolved',
+            self::Closed => 'Closed',
+        };
+    }
 }

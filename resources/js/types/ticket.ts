@@ -77,3 +77,11 @@ export type Ticket = {
     updated_at: string;
     can: TicketAbilities;
 };
+
+export type ActivityItem = {
+    id: number;
+    event: string;
+    description: string;
+    actor: UserSummary | null;
+    created_at: string;
+};

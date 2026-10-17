@@ -21,4 +21,20 @@ enum ActivityEvent: string
     case TicketEscalated = 'ticket.escalated';
     case TicketImported = 'ticket.imported';
     case TicketReopened = 'ticket.reopened';
+
+    /**
+     * Events a customer must never see (ARCHITECTURE.md §15): internal
+     * notes, escalation, and SLA internals.
+     *
+     * @return array<int, self>
+     */
+    public static function staffOnly(): array
+    {
+        return [self::NoteAdded, self::TicketEscalated, self::SlaWarning, self::SlaBreached];
+    }
+
+    public function isCustomerVisible(): bool
+    {
+        return ! in_array($this, self::staffOnly(), true);
+    }
 }

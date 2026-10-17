@@ -2,13 +2,20 @@ import { Head, Link } from '@inertiajs/react';
 import { PencilIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
 import { PriorityBadge } from '@/components/ticket/PriorityBadge';
 import { StatusBadge } from '@/components/ticket/StatusBadge';
 import { dashboard } from '@/routes';
 import { edit, index, show } from '@/routes/tickets';
-import type { Ticket } from '@/types/ticket';
+import type { ActivityItem, Ticket } from '@/types/ticket';
 
-export default function TicketsShow({ ticket }: { ticket: { data: Ticket } }) {
+export default function TicketsShow({
+    ticket,
+    activities,
+}: {
+    ticket: { data: Ticket };
+    activities: { data: ActivityItem[] };
+}) {
     const t = ticket.data;
 
     return (
@@ -58,6 +65,8 @@ export default function TicketsShow({ ticket }: { ticket: { data: Ticket } }) {
                         />
                     </CardContent>
                 </Card>
+
+                <ActivityTimeline activities={activities.data} />
             </div>
         </>
     );

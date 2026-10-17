@@ -7,9 +7,11 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Http\Requests\UpdateTicketStatusRequest;
+use App\Http\Resources\ActivityResource;
 use App\Http\Resources\TicketListResource;
 use App\Http\Resources\TicketResource;
 use App\Models\Ticket;
+use App\Services\ActivityLogService;
 use App\Services\TicketService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +20,10 @@ use Inertia\Response;
 
 final class TicketController extends Controller
 {
-    public function __construct(private readonly TicketService $tickets) {}
+    public function __construct(
+        private readonly TicketService $tickets,
+        private readonly ActivityLogService $activity,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -47,12 +52,12 @@ final class TicketController extends Controller
     {
         $this->authorize('create', Ticket::class);
 
-        $ticket = $this->tickets->create($request->toData());
+        $ticket = $this->tickets->create($request->toData(), $request->user());
 
         return redirect()->route('tickets.show', $ticket->ticket_number);
     }
 
-    public function show(Ticket $ticket): Response
+    public function show(Ticket $ticket, Request $request): Response
     {
         $this->authorize('view', $ticket);
 
@@ -60,6 +65,9 @@ final class TicketController extends Controller
 
         return Inertia::render('tickets/show', [
             'ticket' => new TicketResource($ticket),
+            'activities' => ActivityResource::collection(
+                $this->activity->timelineFor($ticket, $request->user()),
+            ),
         ]);
     }
 
@@ -79,7 +87,7 @@ final class TicketController extends Controller
     {
         $this->authorize('update', $ticket);
 
-        $this->tickets->update($ticket, $request->toData());
+        $this->tickets->update($ticket, $request->toData(), $request->user());
 
         return redirect()->route('tickets.show', $ticket->ticket_number);
     }
@@ -88,7 +96,7 @@ final class TicketController extends Controller
     {
         $this->authorize('changeStatus', $ticket);
 
-        $this->tickets->changeStatus($ticket, $request->status());
+        $this->tickets->changeStatus($ticket, $request->status(), $request->user());
 
         return redirect()->route('tickets.show', $ticket->ticket_number);
     }

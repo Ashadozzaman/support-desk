@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Contracts\Repositories\TicketRepositoryInterface;
 use App\DTOs\CreateTicketData;
 use App\DTOs\UpdateTicketData;
+use App\Enums\ActivityEvent;
 use App\Enums\TicketStatus;
 use App\Exceptions\InvalidStatusTransitionException;
 use App\Models\Category;
@@ -18,26 +19,88 @@ use Illuminate\Support\Facades\DB;
 
 final class TicketService
 {
-    public function __construct(private readonly TicketRepositoryInterface $tickets) {}
+    public function __construct(
+        private readonly TicketRepositoryInterface $tickets,
+        private readonly ActivityLogService $activity,
+    ) {}
 
-    public function create(CreateTicketData $data): Ticket
+    public function create(CreateTicketData $data, User $actor): Ticket
     {
-        return DB::transaction(
+        return DB::transaction(function () use ($data, $actor) {
             // SLA is not computed yet (placeholder null; wired up in Step 9).
-            fn () => $this->tickets->create($data, null, null),
-            attempts: 3,
-        );
+            $ticket = $this->tickets->create($data, null, null);
+
+            $this->activity->log(
+                $ticket,
+                ActivityEvent::TicketCreated,
+                $actor,
+                [],
+                [
+                    'subject' => $ticket->subject,
+                    'priority' => $ticket->priority->value,
+                    'category_id' => $ticket->category_id,
+                ],
+            );
+
+            return $ticket;
+        }, attempts: 3);
     }
 
-    public function update(Ticket $ticket, UpdateTicketData $data): Ticket
+    public function update(Ticket $ticket, UpdateTicketData $data, User $actor): Ticket
     {
-        return DB::transaction(fn () => $this->tickets->update($ticket, $data));
+        return DB::transaction(function () use ($ticket, $data, $actor) {
+            $before = [
+                'subject' => $ticket->subject,
+                'description' => $ticket->description,
+                'priority' => $ticket->priority->value,
+                'category_id' => $ticket->category_id,
+            ];
+
+            $updated = $this->tickets->update($ticket, $data);
+
+            if ($before['priority'] !== $data->priority->value) {
+                $this->activity->log(
+                    $updated,
+                    ActivityEvent::PriorityChanged,
+                    $actor,
+                    ['priority' => $before['priority']],
+                    ['priority' => $data->priority->value],
+                );
+            }
+
+            if ($before['category_id'] !== $data->categoryId) {
+                $this->activity->log(
+                    $updated,
+                    ActivityEvent::CategoryChanged,
+                    $actor,
+                    ['category_id' => $before['category_id']],
+                    ['category_id' => $data->categoryId],
+                );
+            }
+
+            $changedFields = array_filter(
+                ['subject', 'description'],
+                fn (string $field) => $before[$field] !== $data->{$field},
+            );
+
+            if ($changedFields !== []) {
+                $this->activity->log(
+                    $updated,
+                    ActivityEvent::TicketUpdated,
+                    $actor,
+                    array_intersect_key($before, array_flip($changedFields)),
+                    array_combine($changedFields, array_map(fn (string $field) => $data->{$field}, $changedFields)),
+                );
+            }
+
+            return $updated;
+        });
     }
 
     /**
      * @throws InvalidStatusTransitionException
      */
-    public function changeStatus(Ticket $ticket, TicketStatus $target): Ticket
+    public function changeStatus(Ticket $ticket, TicketStatus $target, User $actor): Ticket
     {
         if (! $ticket->status->canTransitionTo($target)) {
             throw new InvalidStatusTransitionException(
@@ -45,7 +108,20 @@ final class TicketService
             );
         }
 
-        return DB::transaction(fn () => $this->tickets->updateStatus($ticket, $target));
+        return DB::transaction(function () use ($ticket, $target, $actor) {
+            $old = $ticket->status->value;
+            $updated = $this->tickets->updateStatus($ticket, $target);
+
+            $this->activity->log(
+                $updated,
+                ActivityEvent::StatusChanged,
+                $actor,
+                ['status' => $old],
+                ['status' => $target->value],
+            );
+
+            return $updated;
+        });
     }
 
     /**
