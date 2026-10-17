@@ -13,6 +13,20 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: support_desk
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -23,6 +37,7 @@ jobs:
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: '8.3'
+          extensions: mbstring, pdo_mysql, bcmath
           tools: composer:v2
           coverage: none
 
@@ -30,9 +45,32 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
+          cache: npm
 
-      - name: Setup Application
-        run: composer setup
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
 
-      - name: Run CI Checks
-        run: composer ci:check
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Create test database
+        run: mysql -h 127.0.0.1 -u root -e "CREATE DATABASE IF NOT EXISTS support_desk_test;"
+
+      - name: Configure environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+          cp .env.testing.example .env.testing
+          php artisan key:generate --env=testing --ansi
+
+      - name: Lint (Pint)
+        run: ./vendor/bin/pint --test
+
+      - name: Test (Pest, against MySQL)
+        run: php artisan test --compact --env=testing
+
+      - name: Type-check (tsc)
+        run: npx tsc --noEmit
+
+      - name: Build frontend
+        run: npm run build
