@@ -8,10 +8,13 @@ use App\Http\Requests\StoreTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Http\Requests\UpdateTicketStatusRequest;
 use App\Http\Resources\ActivityResource;
+use App\Http\Resources\ReplyResource;
 use App\Http\Resources\TicketListResource;
 use App\Http\Resources\TicketResource;
 use App\Models\Ticket;
+use App\Models\TicketReply;
 use App\Services\ActivityLogService;
+use App\Services\ReplyService;
 use App\Services\TicketService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +26,7 @@ final class TicketController extends Controller
     public function __construct(
         private readonly TicketService $tickets,
         private readonly ActivityLogService $activity,
+        private readonly ReplyService $replies,
     ) {}
 
     public function index(Request $request): Response
@@ -63,11 +67,20 @@ final class TicketController extends Controller
 
         $ticket->load(['category:id,name', 'assignedAgent:id,name', 'creator:id,name']);
 
+        $user = $request->user();
+
         return Inertia::render('tickets/show', [
             'ticket' => new TicketResource($ticket),
             'activities' => ActivityResource::collection(
-                $this->activity->timelineFor($ticket, $request->user()),
+                $this->activity->timelineFor($ticket, $user),
             ),
+            'replies' => ReplyResource::collection(
+                $this->replies->threadFor($ticket, $user),
+            ),
+            'can' => [
+                'reply' => $user->can('create', [TicketReply::class, $ticket]),
+                'note' => $user->can('createNote', [TicketReply::class, $ticket]),
+            ],
         ]);
     }
 

@@ -3,18 +3,25 @@ import { PencilIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
+import { ReplyForm } from '@/components/reply/ReplyForm';
+import { ReplyThread } from '@/components/reply/ReplyThread';
 import { PriorityBadge } from '@/components/ticket/PriorityBadge';
 import { StatusBadge } from '@/components/ticket/StatusBadge';
 import { dashboard } from '@/routes';
 import { edit, index, show } from '@/routes/tickets';
+import type { ReplyAbilities, ReplyItem } from '@/types/reply';
 import type { ActivityItem, Ticket } from '@/types/ticket';
 
 export default function TicketsShow({
     ticket,
     activities,
+    replies,
+    can,
 }: {
     ticket: { data: Ticket };
     activities: { data: ActivityItem[] };
+    replies: { data: ReplyItem[] };
+    can: ReplyAbilities;
 }) {
     const t = ticket.data;
 
@@ -65,6 +72,10 @@ export default function TicketsShow({
                         />
                     </CardContent>
                 </Card>
+
+                <ReplyThread replies={replies.data} />
+
+                {(can.reply || can.note) && <ReplyForm ticketNumber={t.ticket_number} canNote={can.note} />}
 
                 <ActivityTimeline activities={activities.data} />
             </div>

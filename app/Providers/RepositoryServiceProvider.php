@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Contracts\Repositories\ActivityRepositoryInterface;
+use App\Contracts\Repositories\AttachmentRepositoryInterface;
+use App\Contracts\Repositories\ReplyRepositoryInterface;
 use App\Contracts\Repositories\TicketRepositoryInterface;
 use App\Repositories\Eloquent\ActivityRepository;
+use App\Repositories\Eloquent\AttachmentRepository;
+use App\Repositories\Eloquent\ReplyRepository;
 use App\Repositories\Eloquent\TicketRepository;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,5 +25,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         // added here as each repository is introduced (see CODING_STRUCTURE.md §5).
         $this->app->bind(TicketRepositoryInterface::class, TicketRepository::class);
         $this->app->bind(ActivityRepositoryInterface::class, ActivityRepository::class);
+        $this->app->bind(ReplyRepositoryInterface::class, ReplyRepository::class);
+        $this->app->bind(AttachmentRepositoryInterface::class, AttachmentRepository::class);
     }
 }

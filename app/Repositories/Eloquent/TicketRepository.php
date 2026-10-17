@@ -76,10 +76,32 @@ final class TicketRepository implements TicketRepositoryInterface
 
     public function updateStatus(Ticket $ticket, TicketStatus $status): Ticket
     {
+        // Closed always comes from Resolved, so resolved_at is preserved;
+        // any other target (e.g. a customer reply reopening the ticket)
+        // clears it since the ticket is no longer considered resolved.
+        $resolvedAt = match ($status) {
+            TicketStatus::Resolved => now(),
+            TicketStatus::Closed => $ticket->resolved_at,
+            default => null,
+        };
+
         $ticket->update([
             'status' => $status,
-            'resolved_at' => $status === TicketStatus::Resolved ? now() : $ticket->resolved_at,
+            'resolved_at' => $resolvedAt,
         ]);
+
+        return $ticket;
+    }
+
+    public function recordReply(Ticket $ticket, bool $isStaffReply): Ticket
+    {
+        $attributes = ['last_reply_at' => now()];
+
+        if ($isStaffReply && $ticket->first_response_at === null) {
+            $attributes['first_response_at'] = now();
+        }
+
+        $ticket->update($attributes);
 
         return $ticket;
     }

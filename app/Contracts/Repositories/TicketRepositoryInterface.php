@@ -28,4 +28,10 @@ interface TicketRepositoryInterface
     public function update(Ticket $ticket, UpdateTicketData $data): Ticket;
 
     public function updateStatus(Ticket $ticket, TicketStatus $status): Ticket;
+
+    /**
+     * Updates last_reply_at (every reply) and first_response_at (the first
+     * staff public reply only, left untouched once set).
+     */
+    public function recordReply(Ticket $ticket, bool $isStaffReply): Ticket;
 }
