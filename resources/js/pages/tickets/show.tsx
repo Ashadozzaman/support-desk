@@ -1,0 +1,81 @@
+import { Head, Link } from '@inertiajs/react';
+import { PencilIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PriorityBadge } from '@/components/ticket/PriorityBadge';
+import { StatusBadge } from '@/components/ticket/StatusBadge';
+import { dashboard } from '@/routes';
+import { edit, index, show } from '@/routes/tickets';
+import type { Ticket } from '@/types/ticket';
+
+export default function TicketsShow({ ticket }: { ticket: { data: Ticket } }) {
+    const t = ticket.data;
+
+    return (
+        <>
+            <Head title={t.ticket_number} />
+
+            <div className="flex flex-1 flex-col gap-4 p-4">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <p className="text-muted-foreground font-mono text-sm">{t.ticket_number}</p>
+                        <h1 className="text-xl font-semibold">{t.subject}</h1>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <PriorityBadge priority={t.priority} />
+                        <StatusBadge status={t.status} />
+                        {t.can.update && (
+                            <Button asChild variant="outline" size="sm">
+                                <Link href={edit(t.ticket_number).url}>
+                                    <PencilIcon />
+                                    Edit
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Description</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="whitespace-pre-wrap">{t.description}</p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-4 sm:grid-cols-2">
+                        <Detail label="Category" value={t.category?.name ?? 'Uncategorised'} />
+                        <Detail label="Assigned to" value={t.assigned_agent?.name ?? 'Unassigned'} />
+                        <Detail label="Created by" value={t.creator.name} />
+                        <Detail
+                            label="Created"
+                            value={new Date(t.created_at).toLocaleString()}
+                        />
+                    </CardContent>
+                </Card>
+            </div>
+        </>
+    );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+    return (
+        <div>
+            <p className="text-muted-foreground text-xs">{label}</p>
+            <p className="text-sm font-medium">{value}</p>
+        </div>
+    );
+}
+
+TicketsShow.layout = (props: { ticket: { data: Ticket } }) => ({
+    breadcrumbs: [
+        { title: 'Dashboard', href: dashboard() },
+        { title: 'Tickets', href: index() },
+        { title: props.ticket.data.ticket_number, href: show(props.ticket.data.ticket_number) },
+    ],
+});
