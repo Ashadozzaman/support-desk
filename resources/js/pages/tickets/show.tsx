@@ -5,23 +5,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
 import { ReplyForm } from '@/components/reply/ReplyForm';
 import { ReplyThread } from '@/components/reply/ReplyThread';
+import { AssignAgentDialog } from '@/components/ticket/AssignAgentDialog';
+import { ClaimTicketButton } from '@/components/ticket/ClaimTicketButton';
 import { PriorityBadge } from '@/components/ticket/PriorityBadge';
 import { StatusBadge } from '@/components/ticket/StatusBadge';
 import { dashboard } from '@/routes';
 import { edit, index, show } from '@/routes/tickets';
 import type { ReplyAbilities, ReplyItem } from '@/types/reply';
-import type { ActivityItem, Ticket } from '@/types/ticket';
+import type { ActivityItem, AgentOption, Ticket } from '@/types/ticket';
 
 export default function TicketsShow({
     ticket,
     activities,
     replies,
     can,
+    agents,
 }: {
     ticket: { data: Ticket };
     activities: { data: ActivityItem[] };
     replies: { data: ReplyItem[] };
     can: ReplyAbilities;
+    agents: AgentOption[];
 }) {
     const t = ticket.data;
 
@@ -38,6 +42,14 @@ export default function TicketsShow({
                     <div className="flex items-center gap-2">
                         <PriorityBadge priority={t.priority} />
                         <StatusBadge status={t.status} />
+                        {can.claim && <ClaimTicketButton ticketNumber={t.ticket_number} />}
+                        {can.assign && (
+                            <AssignAgentDialog
+                                ticketNumber={t.ticket_number}
+                                agents={agents}
+                                reassign={t.assigned_agent !== null}
+                            />
+                        )}
                         {t.can.update && (
                             <Button asChild variant="outline" size="sm">
                                 <Link href={edit(t.ticket_number).url}>

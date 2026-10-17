@@ -34,4 +34,18 @@ interface TicketRepositoryInterface
      * staff public reply only, left untouched once set).
      */
     public function recordReply(Ticket $ticket, bool $isStaffReply): Ticket;
+
+    /**
+     * Atomic conditional UPDATE (ARCHITECTURE.md §7): claims the ticket only
+     * if it is still open and unassigned. Returns true iff exactly one row
+     * was affected — false means another agent won the race first.
+     */
+    public function claimIfUnassigned(Ticket $ticket, int $agentId): bool;
+
+    /**
+     * Manual/auto assignment (admin assign, reassign, auto-assign). Moves
+     * an Open ticket to InProgress; leaves the status alone otherwise (e.g.
+     * reassigning a ticket that is already InProgress).
+     */
+    public function assign(Ticket $ticket, int $agentId): Ticket;
 }

@@ -11,4 +11,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('tickets/{ticket}/edit', [TicketController::class, 'edit'])->name('tickets.edit');
     Route::put('tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
     Route::patch('tickets/{ticket}/status', [TicketController::class, 'changeStatus'])->name('tickets.change-status');
+    Route::post('tickets/{ticket}/claim', [TicketController::class, 'claim'])->name('tickets.claim');
+    Route::post('tickets/{ticket}/assign', [TicketController::class, 'assign'])->name('tickets.assign');
 });

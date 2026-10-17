@@ -7,16 +7,18 @@ import { TicketTable } from '@/components/ticket/TicketTable';
 import { dashboard } from '@/routes';
 import { create, index } from '@/routes/tickets';
 import type { Paginated } from '@/types/pagination';
-import type { TicketListItem } from '@/types/ticket';
+import type { AgentOption, TicketListItem } from '@/types/ticket';
 
 type Tab = 'active' | 'resolved';
 
 export default function TicketsIndex({
     tickets,
     tab,
+    agents,
 }: {
     tickets: Paginated<TicketListItem>;
     tab: Tab;
+    agents: AgentOption[];
 }) {
     const tabs: { value: Tab; label: string }[] = [
         { value: 'active', label: 'Active' },
@@ -73,7 +75,7 @@ export default function TicketsIndex({
                     />
                 ) : (
                     <>
-                        <TicketTable tickets={tickets.data} />
+                        <TicketTable tickets={tickets.data} agents={agents} />
                         <Pagination meta={tickets.meta} />
                     </>
                 )}

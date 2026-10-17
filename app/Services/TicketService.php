@@ -10,6 +10,7 @@ use App\DTOs\UpdateTicketData;
 use App\Enums\ActivityEvent;
 use App\Enums\TicketStatus;
 use App\Exceptions\InvalidStatusTransitionException;
+use App\Jobs\AutoAssignTicketJob;
 use App\Models\Category;
 use App\Models\Ticket;
 use App\Models\User;
@@ -41,6 +42,8 @@ final class TicketService
                     'category_id' => $ticket->category_id,
                 ],
             );
+
+            AutoAssignTicketJob::dispatch($ticket->id)->afterCommit();
 
             return $ticket;
         }, attempts: 3);

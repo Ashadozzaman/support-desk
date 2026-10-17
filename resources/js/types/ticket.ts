@@ -78,6 +78,11 @@ export type Ticket = {
     can: TicketAbilities;
 };
 
+export type AgentOption = {
+    id: number;
+    name: string;
+};
+
 export type ActivityItem = {
     id: number;
     event: string;

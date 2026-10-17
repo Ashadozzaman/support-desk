@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Support\Tickets\TicketNumberGenerator;
 use Carbon\CarbonImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 final class TicketRepository implements TicketRepositoryInterface
 {
@@ -102,6 +103,36 @@ final class TicketRepository implements TicketRepositoryInterface
         }
 
         $ticket->update($attributes);
+
+        return $ticket;
+    }
+
+    public function claimIfUnassigned(Ticket $ticket, int $agentId): bool
+    {
+        $affected = Ticket::query()
+            ->whereKey($ticket->id)
+            ->where('status', TicketStatus::Open->value)
+            ->whereNull('assigned_agent_id')
+            ->update([
+                'assigned_agent_id' => $agentId,
+                'assigned_at' => now(),
+                'status' => TicketStatus::InProgress->value,
+                'version' => DB::raw('version + 1'),
+            ]);
+
+        return $affected === 1;
+    }
+
+    public function assign(Ticket $ticket, int $agentId): Ticket
+    {
+        $ticket->update([
+            'assigned_agent_id' => $agentId,
+            'assigned_at' => now(),
+            'status' => $ticket->status === TicketStatus::Open
+                ? TicketStatus::InProgress->value
+                : $ticket->status->value,
+            'version' => $ticket->version + 1,
+        ]);
 
         return $ticket;
     }

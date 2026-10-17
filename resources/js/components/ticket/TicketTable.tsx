@@ -1,11 +1,13 @@
 import { Link } from '@inertiajs/react';
 import { TicketCard } from '@/components/cards/TicketCard';
+import { AssignAgentDialog } from '@/components/ticket/AssignAgentDialog';
+import { ClaimTicketButton } from '@/components/ticket/ClaimTicketButton';
 import { PriorityBadge } from '@/components/ticket/PriorityBadge';
 import { StatusBadge } from '@/components/ticket/StatusBadge';
 import { show } from '@/routes/tickets';
-import type { TicketListItem } from '@/types/ticket';
+import type { AgentOption, TicketListItem } from '@/types/ticket';
 
-export function TicketTable({ tickets }: { tickets: TicketListItem[] }) {
+export function TicketTable({ tickets, agents }: { tickets: TicketListItem[]; agents: AgentOption[] }) {
     return (
         <>
             <div className="hidden overflow-x-auto rounded-lg border md:block">
@@ -19,6 +21,7 @@ export function TicketTable({ tickets }: { tickets: TicketListItem[] }) {
                             <th className="px-4 py-2 font-medium">Category</th>
                             <th className="px-4 py-2 font-medium">Assigned to</th>
                             <th className="px-4 py-2 font-medium">Created</th>
+                            <th className="px-4 py-2 font-medium">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -46,6 +49,20 @@ export function TicketTable({ tickets }: { tickets: TicketListItem[] }) {
                                 <td className="text-muted-foreground px-4 py-2">
                                     {new Date(ticket.created_at).toLocaleDateString()}
                                 </td>
+                                <td className="px-4 py-2">
+                                    <div className="flex items-center gap-1.5">
+                                        {ticket.can.claim && (
+                                            <ClaimTicketButton ticketNumber={ticket.ticket_number} />
+                                        )}
+                                        {ticket.can.assign && (
+                                            <AssignAgentDialog
+                                                ticketNumber={ticket.ticket_number}
+                                                agents={agents}
+                                                reassign={ticket.assigned_agent !== null}
+                                            />
+                                        )}
+                                    </div>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -54,7 +71,7 @@ export function TicketTable({ tickets }: { tickets: TicketListItem[] }) {
 
             <div className="grid gap-3 md:hidden">
                 {tickets.map((ticket) => (
-                    <TicketCard key={ticket.ticket_number} ticket={ticket} />
+                    <TicketCard key={ticket.ticket_number} ticket={ticket} agents={agents} />
                 ))}
             </div>
         </>

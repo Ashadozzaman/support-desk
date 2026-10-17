@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\Permission;
+use App\Http\Requests\AssignTicketRequest;
 use App\Http\Requests\StoreTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Http\Requests\UpdateTicketStatusRequest;
@@ -15,6 +17,7 @@ use App\Models\Ticket;
 use App\Models\TicketReply;
 use App\Services\ActivityLogService;
 use App\Services\ReplyService;
+use App\Services\TicketAssignmentService;
 use App\Services\TicketService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +30,7 @@ final class TicketController extends Controller
         private readonly TicketService $tickets,
         private readonly ActivityLogService $activity,
         private readonly ReplyService $replies,
+        private readonly TicketAssignmentService $assignments,
     ) {}
 
     public function index(Request $request): Response
@@ -35,11 +39,13 @@ final class TicketController extends Controller
 
         $tab = $request->query('tab') === 'resolved' ? 'resolved' : 'active';
 
-        $tickets = $this->tickets->paginate($request->user(), $tab);
+        $user = $request->user();
+        $tickets = $this->tickets->paginate($user, $tab);
 
         return Inertia::render('tickets/index', [
             'tickets' => TicketListResource::collection($tickets),
             'tab' => $tab,
+            'agents' => $user->can(Permission::TicketsAssign->value) ? $this->assignments->agentOptions() : [],
         ]);
     }
 
@@ -80,7 +86,10 @@ final class TicketController extends Controller
             'can' => [
                 'reply' => $user->can('create', [TicketReply::class, $ticket]),
                 'note' => $user->can('createNote', [TicketReply::class, $ticket]),
+                'claim' => $user->can('claim', $ticket),
+                'assign' => $user->can('assign', $ticket),
             ],
+            'agents' => $user->can('assign', $ticket) ? $this->assignments->agentOptions() : [],
         ]);
     }
 
@@ -110,6 +119,24 @@ final class TicketController extends Controller
         $this->authorize('changeStatus', $ticket);
 
         $this->tickets->changeStatus($ticket, $request->status(), $request->user());
+
+        return redirect()->route('tickets.show', $ticket->ticket_number);
+    }
+
+    public function claim(Request $request, Ticket $ticket): RedirectResponse
+    {
+        $this->authorize('claim', $ticket);
+
+        $this->assignments->claim($ticket, $request->user());
+
+        return redirect()->route('tickets.show', $ticket->ticket_number);
+    }
+
+    public function assign(AssignTicketRequest $request, Ticket $ticket): RedirectResponse
+    {
+        $this->authorize('assign', $ticket);
+
+        $this->assignments->assign($ticket, $request->agentId(), $request->user());
 
         return redirect()->route('tickets.show', $ticket->ticket_number);
     }

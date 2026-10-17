@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\InvalidStatusTransitionException;
+use App\Exceptions\TicketAlreadyAssignedException;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -40,5 +41,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (InvalidStatusTransitionException $e, Request $request) {
             return response()->json(['message' => $e->getMessage()], 422);
+        });
+
+        $exceptions->render(function (TicketAlreadyAssignedException $e, Request $request) {
+            return response()->json(['message' => $e->getMessage()], 409);
         });
     })->create();

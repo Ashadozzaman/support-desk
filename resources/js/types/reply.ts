@@ -22,4 +22,6 @@ export type ReplyItem = {
 export type ReplyAbilities = {
     reply: boolean;
     note: boolean;
+    claim: boolean;
+    assign: boolean;
 };
