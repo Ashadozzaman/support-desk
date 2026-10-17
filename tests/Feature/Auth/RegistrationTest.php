@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Enums\Role;
+use App\Models\User;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
@@ -15,6 +18,9 @@ class RegistrationTest extends TestCase
         parent::setUp();
 
         $this->skipUnlessFortifyHas(Features::registration());
+
+        // Registration assigns the 'customer' role, so it must exist (CLAUDE.md RBAC rules).
+        $this->seed(RolesAndPermissionsSeeder::class);
     }
 
     public function test_registration_screen_can_be_rendered()
@@ -35,5 +41,8 @@ class RegistrationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+
+        $user = User::whereEmail('test@example.com')->firstOrFail();
+        $this->assertTrue($user->hasRole(Role::Customer->value));
     }
 }
