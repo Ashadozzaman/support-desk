@@ -45,16 +45,31 @@ return new class extends Migration
 
         // reports:aggregate selects one business day at a time by each
         // event's own timestamp. Without these, EXPLAIN on a one-day
-        // created_at range was a full scan of ~1M rows. All four go in ONE
-        // ALTER: tickets has a FULLTEXT index, and one statement means one
-        // pass over the table instead of four (DATABASE.md §3 note).
-        // INPLACE/LOCK=NONE makes MySQL fail loudly rather than silently fall
-        // back to a write-blocking table copy.
+        // created_at range was a full scan of ~1M rows.
+        //
+        // The resolved_at / first_response_at ones also COVER the live
+        // median/p90 query (ReportRepository::percentiles): 90 days is ~45%
+        // of the table, so with a plain (resolved_at) index MySQL chose a
+        // full scan + filesort (5.5s at ~1M rows); with priority and the
+        // minutes in the index it reads the index alone.
+        //
+        // (status, priority) is widened to cover the live backlog and aging
+        // queries (ReportRepository::backlogNow/agingBuckets): over ~350k
+        // active tickets they read every row (1.4–3.2s) because no index
+        // held assigned_agent_id / created_at / sla_due_at. The dashboard's
+        // GROUP BY priority keeps using the same (status, priority) prefix.
+        //
+        // Everything goes in ONE ALTER: tickets has a FULLTEXT index, and one
+        // statement means one pass over the table instead of five
+        // (DATABASE.md §3 note). INPLACE/LOCK=NONE makes MySQL fail loudly
+        // rather than silently fall back to a write-blocking table copy.
         DB::statement('ALTER TABLE tickets
             ADD INDEX tickets_created_at_index (created_at),
-            ADD INDEX tickets_resolved_at_index (resolved_at),
-            ADD INDEX tickets_first_response_at_index (first_response_at),
+            ADD INDEX tickets_resolved_at_priority_minutes_index (resolved_at, priority, resolution_minutes),
+            ADD INDEX tickets_first_response_at_priority_minutes_index (first_response_at, priority, first_response_minutes),
             ADD INDEX tickets_escalated_at_index (escalated_at),
+            ADD INDEX tickets_status_priority_agent_created_due_index (status, priority, assigned_agent_id, created_at, sla_due_at),
+            DROP INDEX tickets_status_priority_index,
             ALGORITHM=INPLACE, LOCK=NONE');
 
         // Reopens per day are read from the audit trail; the existing
@@ -71,9 +86,11 @@ return new class extends Migration
         });
 
         DB::statement('ALTER TABLE tickets
+            ADD INDEX tickets_status_priority_index (status, priority),
+            DROP INDEX tickets_status_priority_agent_created_due_index,
             DROP INDEX tickets_created_at_index,
-            DROP INDEX tickets_resolved_at_index,
-            DROP INDEX tickets_first_response_at_index,
+            DROP INDEX tickets_resolved_at_priority_minutes_index,
+            DROP INDEX tickets_first_response_at_priority_minutes_index,
             DROP INDEX tickets_escalated_at_index');
 
         Schema::dropIfExists('ticket_daily_snapshots');
