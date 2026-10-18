@@ -1,25 +1,67 @@
 import { Head } from '@inertiajs/react';
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
+import { AlertTriangleIcon, CheckCircle2Icon, ClockIcon, TicketIcon, TimerIcon, UsersIcon } from 'lucide-react';
+import { ApproachingSlaTable } from '@/components/ticket/ApproachingSlaTable';
+import { BreakdownCard, type BreakdownRow } from '@/components/cards/BreakdownCard';
+import { PriorityBarChart } from '@/components/charts/PriorityBarChart';
+import { TicketsTrendChart } from '@/components/charts/TicketsTrendChart';
+import { StatCard } from '@/components/cards/StatCard';
+import { useStaffQueue } from '@/hooks/use-staff-queue';
 import { dashboard } from '@/routes';
+import type { TicketListItem } from '@/types/ticket';
+import type { AgentBreakdown, DashboardScope, DashboardStats, PriorityBreakdown, TicketsTrendPoint } from '@/types/dashboard';
 
-export default function Dashboard() {
+export default function Dashboard({
+    scope,
+    stats,
+    byPriority,
+    byAgent,
+    trend,
+    approachingSla,
+}: {
+    scope: DashboardScope;
+    stats: DashboardStats;
+    byPriority: PriorityBreakdown[];
+    byAgent: AgentBreakdown[];
+    trend: TicketsTrendPoint[];
+    approachingSla: TicketListItem[];
+}) {
+    useStaffQueue(['stats', 'byPriority', 'byAgent', 'trend', 'approachingSla']);
+
+    const agentRows: BreakdownRow[] = byAgent.map((row) => ({
+        key: row.agent === null ? 'unassigned' : String(row.agent.id),
+        label: row.agent?.name ?? 'Unassigned',
+        count: row.count,
+    }));
+
     return (
         <>
             <Head title="Dashboard" />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+            <div className="flex h-full flex-1 flex-col gap-4 p-4">
                 <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
+                    <StatCard label="Open tickets" value={stats.open_total} icon={TicketIcon} />
+                    {stats.unassigned !== null && (
+                        <StatCard label="Unassigned" value={stats.unassigned} icon={UsersIcon} />
+                    )}
+                    {stats.critical !== null && (
+                        <StatCard label="Critical" value={stats.critical} icon={AlertTriangleIcon} />
+                    )}
+                    <StatCard label="SLA breached" value={stats.sla_breached} icon={ClockIcon} />
+                    <StatCard label="SLA approaching" value={stats.sla_approaching} icon={TimerIcon} />
+                    <StatCard label="Resolved" value={stats.resolved} icon={CheckCircle2Icon} />
                 </div>
-                <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+
+                {scope === 'global' && (
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <PriorityBarChart data={byPriority} />
+                        <BreakdownCard title="By agent" rows={agentRows} />
+                    </div>
+                )}
+
+                <TicketsTrendChart data={trend} />
+
+                <div className="flex flex-col gap-2">
+                    <h2 className="text-lg font-semibold">Approaching SLA</h2>
+                    <ApproachingSlaTable tickets={approachingSla} />
                 </div>
             </div>
         </>
