@@ -53,8 +53,12 @@ class HandleInertiaRequests extends Middleware
                 'unreadCount' => $notifications->unreadCountFor($user),
                 // A plain array of resources, not ::collection() — a
                 // ResourceCollection JSON-encodes wrapped in a "data" key,
-                // which breaks a prop that is itself a plain list.
-                'recent' => $notifications->recentFor($user)->map(fn ($n) => new NotificationResource($n))->all(),
+                // which breaks a prop that is itself a plain list. Each item
+                // must be ->resolve()'d to a plain array: Inertia's prop
+                // resolver recurses into array values and wraps any bare
+                // JsonResource it finds in "data" at any depth, so leaving
+                // these as resource objects double-wraps every row.
+                'recent' => $notifications->recentFor($user)->map(fn ($n) => (new NotificationResource($n))->resolve())->all(),
             ],
         ];
     }

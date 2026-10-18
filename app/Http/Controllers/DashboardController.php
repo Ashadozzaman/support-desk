@@ -27,9 +27,13 @@ class DashboardController extends Controller
             // Mapped individually rather than ::collection() — a
             // ResourceCollection always wraps in a "data" key even nested
             // inside other props (see HandleInertiaRequests for the same
-            // pattern with notifications).
+            // pattern with notifications). Each item must be ->resolve()'d
+            // to a plain array here: Inertia's prop resolver recurses into
+            // array values and re-wraps any bare JsonResource it finds in
+            // "data" (it treats Responsable the same at every depth), so
+            // leaving these as resource objects double-wraps every row.
             'approachingSla' => $data['approachingSla']->map(
-                fn ($ticket) => new TicketListResource($ticket)
+                fn ($ticket) => (new TicketListResource($ticket))->resolve()
             )->values(),
         ]);
     }

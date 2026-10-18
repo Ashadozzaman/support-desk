@@ -202,6 +202,24 @@ test('the tickets-created trend is a continuous 14-day series with gap days zero
     });
 });
 
+test('approaching-sla tickets are serialized as plain rows, not individually wrapped resources', function () {
+    $admin = makeAdmin();
+
+    $ticket = Ticket::factory()->create([
+        'status' => TicketStatus::Open->value,
+        'sla_due_at' => now()->addHour(),
+        'sla_warning_at' => now()->subMinute(),
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->has('approachingSla', 1)
+        ->where('approachingSla.0.ticket_number', $ticket->ticket_number)
+    );
+});
+
 test('the tickets-created trend is scoped the same way as the other stats', function () {
     $agent = makeAgentUser();
     $other = makeAgentUser();
