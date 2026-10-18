@@ -8,6 +8,7 @@ use App\Contracts\Repositories\DashboardRepositoryInterface;
 use App\Enums\Permission;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Support\TrendSeries;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -119,9 +120,6 @@ class DashboardService
     }
 
     /**
-     * Fills in days with no tickets as zero so the trend chart draws a
-     * continuous `TREND_DAYS`-point line rather than skipping gaps.
-     *
      * @return list<array{day: string, count: int}>
      */
     private function trend(?int $agentId = null, ?int $customerId = null): array
@@ -130,14 +128,7 @@ class DashboardService
             ->ticketsCreatedPerDay(self::TREND_DAYS, $agentId, $customerId)
             ->keyBy('day');
 
-        return collect(range(self::TREND_DAYS - 1, 0))
-            ->map(fn (int $daysAgo) => now()->subDays($daysAgo)->toDateString())
-            ->map(fn (string $day) => [
-                'day' => $day,
-                'count' => $byDay->get($day)['count'] ?? 0,
-            ])
-            ->values()
-            ->all();
+        return TrendSeries::zeroFilled($byDay, self::TREND_DAYS);
     }
 
     /**

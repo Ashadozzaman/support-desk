@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, Clock, FolderGit2, LayoutGrid, TicketIcon, UploadIcon } from 'lucide-react';
+import { BookOpen, Clock, FolderGit2, LayoutGrid, TicketIcon, UploadIcon, UsersIcon } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useCan } from '@/hooks/use-can';
 import { dashboard } from '@/routes';
+import { index as agentsIndex } from '@/routes/admin/agents';
 import { index as businessHoursIndex } from '@/routes/admin/business-hours';
 import { index as importsIndex } from '@/routes/admin/imports';
 import { index as slaPoliciesIndex } from '@/routes/admin/sla-policies';
@@ -51,9 +52,13 @@ export function AppSidebar() {
     const canManageSla = useCan('sla.manage');
     const canManageBusinessHours = useCan('business-hours.manage');
     const canManageImports = useCan('imports.manage');
+    const canManageUsers = useCan('users.manage');
 
     const mainNavItems: NavItem[] = [
         ...baseNavItems,
+        ...(canManageUsers
+            ? [{ title: 'Agents', href: agentsIndex(), icon: UsersIcon } satisfies NavItem]
+            : []),
         ...(canManageSla
             ? [{ title: 'SLA Policies', href: slaPoliciesIndex(), icon: Clock } satisfies NavItem]
             : []),

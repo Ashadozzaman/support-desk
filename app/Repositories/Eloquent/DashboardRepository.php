@@ -86,24 +86,52 @@ class DashboardRepository implements DashboardRepositoryInterface
 
     public function byAgent(): Collection
     {
+        $active = $this->quotedList(self::ACTIVE_STATUSES);
+        $resolved = $this->quotedList(self::RESOLVED_STATUSES);
+        $stuckBefore = now()->subDays((int) config('support.dashboard.stuck_after_days'));
+        $resolved7d = now()->subDays(7);
+        $resolved30d = now()->subDays(30);
+
+        // One pass over the whole table (not just active tickets, unlike
+        // the workload-only version this replaces) so throughput history
+        // can be read alongside current load without a second query — the
+        // GROUP BY still rides the (assigned_agent_id, status) index.
         return Ticket::query()
-            ->active()
             ->toBase()
             ->leftJoin('users', 'users.id', '=', 'tickets.assigned_agent_id')
             ->leftJoin('agent_profiles', 'agent_profiles.user_id', '=', 'tickets.assigned_agent_id')
-            ->selectRaw(<<<'SQL'
+            ->selectRaw(<<<SQL
                 tickets.assigned_agent_id AS agent_id,
                 users.name AS agent_name,
                 agent_profiles.max_active_tickets AS max_active_tickets,
                 agent_profiles.is_available AS is_available,
-                COUNT(*) AS count
-            SQL)
+                SUM(status IN ({$active})) AS active_count,
+                SUM(status = ?) AS open_count,
+                SUM(status = ?) AS in_progress_count,
+                SUM(status = ?) AS waiting_count,
+                SUM(status IN ({$active}) AND assigned_at IS NOT NULL AND assigned_at <= ?) AS stuck_count,
+                SUM(status IN ({$resolved}) AND resolved_at IS NOT NULL AND resolved_at >= ?) AS resolved_7d_count,
+                SUM(status IN ({$resolved}) AND resolved_at IS NOT NULL AND resolved_at >= ?) AS resolved_30d_count
+            SQL, [
+                TicketStatus::Open->value,
+                TicketStatus::InProgress->value,
+                TicketStatus::WaitingForCustomer->value,
+                $stuckBefore,
+                $resolved7d,
+                $resolved30d,
+            ])
             ->groupBy('tickets.assigned_agent_id', 'users.name', 'agent_profiles.max_active_tickets', 'agent_profiles.is_available')
-            ->orderByDesc('count')
+            ->orderByDesc('active_count')
             ->get()
             ->map(fn ($row) => [
                 'agent' => $row->agent_id === null ? null : ['id' => (int) $row->agent_id, 'name' => $row->agent_name],
-                'count' => (int) $row->count,
+                'active_count' => (int) $row->active_count,
+                'open_count' => (int) $row->open_count,
+                'in_progress_count' => (int) $row->in_progress_count,
+                'waiting_count' => (int) $row->waiting_count,
+                'stuck_count' => (int) $row->stuck_count,
+                'resolved_7d_count' => (int) $row->resolved_7d_count,
+                'resolved_30d_count' => (int) $row->resolved_30d_count,
                 'max_active_tickets' => $row->max_active_tickets === null ? null : (int) $row->max_active_tickets,
                 'is_available' => $row->is_available === null ? null : (bool) $row->is_available,
             ]);

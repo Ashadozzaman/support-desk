@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AgentController;
 use App\Http\Controllers\Admin\BusinessHourController;
 use App\Http\Controllers\Admin\HolidayController;
 use App\Http\Controllers\Admin\ImportController;
@@ -7,6 +8,10 @@ use App\Http\Controllers\Admin\SlaPolicyController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('agents', [AgentController::class, 'index'])->name('agents.index');
+    Route::get('agents/{agent}', [AgentController::class, 'show'])->name('agents.show');
+    Route::get('agents/{agent}/daily-export', [AgentController::class, 'dailyExport'])->name('agents.daily-export');
+
     Route::get('sla-policies', [SlaPolicyController::class, 'index'])->name('sla-policies.index');
     Route::put('sla-policies', [SlaPolicyController::class, 'update'])->name('sla-policies.update');
 

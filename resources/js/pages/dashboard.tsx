@@ -1,7 +1,4 @@
-import {
-    BreakdownCard,
-    type BreakdownRow,
-} from "@/components/cards/BreakdownCard";
+import { AgentWorkloadCard } from "@/components/cards/AgentWorkloadCard";
 import { StatCard } from "@/components/cards/StatCard";
 import { PriorityBarChart } from "@/components/charts/PriorityBarChart";
 import { TicketsTrendChart } from "@/components/charts/TicketsTrendChart";
@@ -48,12 +45,6 @@ export default function Dashboard({
         "trend",
         "approachingSla",
     ]);
-
-    const agentRows: BreakdownRow[] = byAgent.map((row) => ({
-        key: row.agent === null ? "unassigned" : String(row.agent.id),
-        label: row.agent?.name ?? "Unassigned",
-        count: row.count,
-    }));
 
     return (
         <>
@@ -103,7 +94,7 @@ export default function Dashboard({
                     </div>
                 )}
 
-                <BreakdownCard title="By agent" rows={agentRows} />
+                <AgentWorkloadCard rows={byAgent} />
                 <div className="flex flex-col gap-2">
                     <h2 className="text-lg font-semibold">Approaching SLA</h2>
                     <ApproachingSlaTable tickets={approachingSla} />

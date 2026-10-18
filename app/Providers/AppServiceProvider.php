@@ -9,6 +9,7 @@ use App\Models\Import;
 use App\Models\SlaPolicy;
 use App\Models\Ticket;
 use App\Models\TicketReply;
+use App\Models\User;
 use App\Policies\AttachmentPolicy;
 use App\Policies\BusinessHourPolicy;
 use App\Policies\HolidayPolicy;
@@ -16,6 +17,7 @@ use App\Policies\ImportPolicy;
 use App\Policies\ReplyPolicy;
 use App\Policies\SlaPolicyPolicy;
 use App\Policies\TicketPolicy;
+use App\Policies\UserPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\DevCommands;
@@ -84,6 +86,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(SlaPolicy::class, SlaPolicyPolicy::class);
         Gate::policy(BusinessHour::class, BusinessHourPolicy::class);
         Gate::policy(Holiday::class, HolidayPolicy::class);
+        Gate::policy(User::class, UserPolicy::class);
     }
 
     /**

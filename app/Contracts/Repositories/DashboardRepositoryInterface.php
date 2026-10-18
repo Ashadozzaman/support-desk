@@ -27,7 +27,25 @@ interface DashboardRepositoryInterface
     public function byPriority(): Collection;
 
     /**
-     * @return Collection<int, array{agent: array{id: int, name: string}|null, count: int, max_active_tickets: int|null, is_available: bool|null}>
+     * One pass over the whole `tickets` table (not just active tickets),
+     * grouped by `assigned_agent_id` — current load (`active_count` and its
+     * open/in_progress/waiting breakdown), a `stuck_count` of active tickets
+     * assigned longer ago than `support.dashboard.stuck_after_days`, and
+     * recent throughput (`resolved_7d_count`/`resolved_30d_count`) in one
+     * query, no per-agent round trip.
+     *
+     * @return Collection<int, array{
+     *     agent: array{id: int, name: string}|null,
+     *     active_count: int,
+     *     open_count: int,
+     *     in_progress_count: int,
+     *     waiting_count: int,
+     *     stuck_count: int,
+     *     resolved_7d_count: int,
+     *     resolved_30d_count: int,
+     *     max_active_tickets: int|null,
+     *     is_available: bool|null,
+     * }>
      */
     public function byAgent(): Collection;
 

@@ -9,10 +9,10 @@ use Illuminate\Console\Command;
 
 /**
  * Scheduled sub-minute (QUEUE_SCHEDULER_REALTIME.md §3) at roughly half of
- * `support.dashboard.cache_ttl` (default 60s) so the global dashboard cache
- * entry is rebuilt before it expires — admin requests then always read a
- * warm `Cache::remember` instead of occasionally paying the cold cost of
- * the full-table aggregate queries.
+ * `support.dashboard.cache_ttl` (default 60s) so the global dashboard
+ * aggregate is rebuilt before its TTL expires — admin requests then always
+ * read a warm `Cache::remember` instead of occasionally paying the cold
+ * cost of the full-table aggregate.
  */
 class WarmDashboardCache extends Command
 {

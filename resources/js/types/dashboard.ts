@@ -18,7 +18,13 @@ export type PriorityBreakdown = {
 
 export type AgentBreakdown = {
     agent: UserSummary | null;
-    count: number;
+    active_count: number;
+    open_count: number;
+    in_progress_count: number;
+    waiting_count: number;
+    stuck_count: number;
+    resolved_7d_count: number;
+    resolved_30d_count: number;
     max_active_tickets: number | null;
     is_available: boolean | null;
 };

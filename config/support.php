@@ -71,6 +71,11 @@ return [
     */
     'dashboard' => [
         'cache_ttl' => (int) env('SUPPORT_DASHBOARD_CACHE_TTL', 60),
+
+        // By-agent breakdown (ARCHITECTURE.md §14): an active ticket is
+        // "stuck" once it has been assigned at least this many days
+        // without reaching resolved/closed.
+        'stuck_after_days' => (int) env('SUPPORT_DASHBOARD_STUCK_AFTER_DAYS', 3),
     ],
 
 ];

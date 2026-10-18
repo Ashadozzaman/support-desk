@@ -8,12 +8,16 @@ use App\Contracts\Repositories\TicketRepositoryInterface;
 use App\DTOs\CreateTicketData;
 use App\DTOs\TicketFilterData;
 use App\DTOs\UpdateTicketData;
+use App\Enums\Permission;
 use App\Enums\TicketStatus;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Support\Tickets\TicketNumberGenerator;
 use Carbon\CarbonImmutable;
+use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\DB;
 
 class TicketRepository implements TicketRepositoryInterface
@@ -41,24 +45,112 @@ class TicketRepository implements TicketRepositoryInterface
         return Ticket::where('ticket_number', $ticketNumber)->firstOrFail();
     }
 
+    /**
+     * Top-N-per-branch-then-merge, branched on (status x visibility rule).
+     * A single `WHERE status IN (...) ORDER BY created_at DESC LIMIT` (the
+     * obvious version of this query) can't use one index for both the
+     * multi-value tab filter and the sort once the matching set is a large
+     * fraction of the table — verified via EXPLAIN: MySQL falls back to a
+     * full table scan + filesort (~2.6-4.9s at ~1M tickets / ~350K in the
+     * "active" bucket). The same problem reappears for an agent's queue
+     * even after splitting by status alone: `scopeVisibleTo`'s
+     * `assigned_agent_id = me OR assigned_agent_id IS NULL` is itself a
+     * 2-value condition, and MySQL picks an index that satisfies it but not
+     * the `ORDER BY` (~1.5s at ~114K matching rows). Splitting visibility
+     * into its own single-equality branches too — mine / unassigned,
+     * instead of one OR — lets each (status, visibility) combination use
+     * the (status, created_at) index natively (confirmed via EXPLAIN: 2-3ms
+     * per branch). Admin (no visibility filter) and customer (a single
+     * `created_by = me` equality) already only ever produce one visibility
+     * branch, so neither is affected.
+     *
+     * Merging and re-slicing is exact, not an approximation, for the same
+     * reason it was for status alone: if a row were outside its own
+     * branch's top-$branchLimit, at least $branchLimit rows in that same
+     * branch already outrank it by created_at, so it can't be in the
+     * *global* top-$branchLimit either — the global top-N is always
+     * contained in the union of every branch's own top-N.
+     */
     public function paginateFor(User $viewer, string $tab, TicketFilterData $filters, int $perPage = 15): LengthAwarePaginator
     {
-        return Ticket::query()
-            ->visibleTo($viewer)
-            ->when($tab === 'resolved', fn ($query) => $query->resolved(), fn ($query) => $query->active())
+        $page = Paginator::resolveCurrentPage();
+        $offset = ($page - 1) * $perPage;
+        $branchLimit = $offset + $perPage;
+
+        $statuses = $this->tabStatuses($tab);
+        $visibilityBranches = $this->visibilityBranches($viewer);
+        $branch = fn (string $status, Closure $applyVisibility) => $this->statusBranch($applyVisibility, $status, $filters);
+
+        $tickets = collect($statuses)
+            ->flatMap(fn (string $status) => collect($visibilityBranches)->flatMap(
+                fn (Closure $applyVisibility) => $branch($status, $applyVisibility)->with([
+                    'category:id,name',
+                    'assignedAgent:id,name',
+                    'creator:id,name',
+                ])->latest()->limit($branchLimit)->get()
+            ))
+            ->sortByDesc(fn (Ticket $ticket) => $ticket->created_at)
+            ->values()
+            ->slice($offset, $perPage)
+            ->values();
+
+        $total = collect($statuses)->sum(fn (string $status) => collect($visibilityBranches)->sum(
+            fn (Closure $applyVisibility) => $branch($status, $applyVisibility)->count()
+        ));
+
+        return (new LengthAwarePaginator($tickets, $total, $perPage, $page, [
+            'path' => Paginator::resolveCurrentPath(),
+            'pageName' => 'page',
+        ]))->withQueryString();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function tabStatuses(string $tab): array
+    {
+        return $tab === 'resolved'
+            ? [TicketStatus::Resolved->value, TicketStatus::Closed->value]
+            : [TicketStatus::Open->value, TicketStatus::InProgress->value, TicketStatus::WaitingForCustomer->value];
+    }
+
+    /**
+     * Mirrors Ticket::scopeVisibleTo's permission matrix (ARCHITECTURE.md
+     * §3) as separate single-condition closures instead of one OR'd scope,
+     * so paginateFor() can query (and merge) each combination independently
+     * — see that method's docblock for why. Keep in sync with
+     * scopeVisibleTo if the permission matrix ever changes.
+     *
+     * @return list<Closure(Builder<Ticket>): Builder<Ticket>>
+     */
+    private function visibilityBranches(User $viewer): array
+    {
+        if ($viewer->can(Permission::TicketsViewAny->value)) {
+            return [fn (Builder $query) => $query];
+        }
+
+        if ($viewer->can(Permission::TicketsViewQueue->value)) {
+            return [
+                fn (Builder $query) => $query->where('assigned_agent_id', $viewer->id),
+                fn (Builder $query) => $query->whereNull('assigned_agent_id'),
+            ];
+        }
+
+        return [fn (Builder $query) => $query->where('created_by', $viewer->id)];
+    }
+
+    /**
+     * @return Builder<Ticket>
+     */
+    private function statusBranch(Closure $applyVisibility, string $status, TicketFilterData $filters): Builder
+    {
+        return $applyVisibility(Ticket::query())
+            ->where('status', $status)
             ->filter($filters)
-            ->with([
-                'category:id,name',
-                'assignedAgent:id,name',
-                'creator:id,name',
-            ])
             ->select([
                 'id', 'ticket_number', 'subject', 'status', 'priority', 'category_id',
                 'assigned_agent_id', 'created_by', 'sla_due_at', 'sla_warning_at', 'sla_met', 'created_at',
-            ])
-            ->latest()
-            ->paginate($perPage)
-            ->withQueryString();
+            ]);
     }
 
     public function countActiveForAgent(int $agentId): int

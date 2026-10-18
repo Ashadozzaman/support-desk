@@ -6,6 +6,7 @@ use App\Enums\Role as RoleEnum;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use App\Jobs\WarmDashboardCacheJob;
+use App\Models\AgentProfile;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Services\DashboardService;
@@ -286,5 +287,64 @@ test('the tickets-created trend is scoped the same way as the other stats', func
         $trend = collect($page->toArray()['props']['trend']);
 
         expect($trend->sum('count'))->toBe(1);
+    });
+});
+
+test('the by-agent breakdown reports status counts, stuck tickets and recent throughput, not just a raw workload count', function () {
+    config(['support.dashboard.stuck_after_days' => 3]);
+    $admin = makeAdmin();
+    $agent = makeAgentUser();
+    AgentProfile::factory()->create([
+        'user_id' => $agent->id,
+        'is_available' => true,
+        'max_active_tickets' => 10,
+    ]);
+
+    Ticket::factory()->create([
+        'status' => TicketStatus::Open->value,
+        'assigned_agent_id' => $agent->id,
+        'assigned_at' => now()->subHour(),
+    ]);
+    Ticket::factory()->create([
+        'status' => TicketStatus::InProgress->value,
+        'assigned_agent_id' => $agent->id,
+        'assigned_at' => now()->subDays(5), // older than the 3-day threshold -> stuck
+    ]);
+    Ticket::factory()->create([
+        'status' => TicketStatus::Resolved->value,
+        'assigned_agent_id' => $agent->id,
+        'assigned_at' => now()->subDays(10),
+        'resolved_at' => now()->subDays(2), // inside both 7d and 30d windows
+    ]);
+    Ticket::factory()->create([
+        'status' => TicketStatus::Closed->value,
+        'assigned_agent_id' => $agent->id,
+        'assigned_at' => now()->subDays(40),
+        'resolved_at' => now()->subDays(20), // inside 30d only
+    ]);
+    Ticket::factory()->create([
+        'status' => TicketStatus::Closed->value,
+        'assigned_agent_id' => $agent->id,
+        'assigned_at' => now()->subDays(90),
+        'resolved_at' => now()->subDays(90), // outside both windows
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $response->assertOk();
+    $response->assertInertia(function ($page) use ($agent) {
+        $row = collect($page->toArray()['props']['byAgent'])
+            ->firstWhere('agent.id', $agent->id);
+
+        expect($row)->not->toBeNull();
+        expect($row['active_count'])->toBe(2);
+        expect($row['open_count'])->toBe(1);
+        expect($row['in_progress_count'])->toBe(1);
+        expect($row['waiting_count'])->toBe(0);
+        expect($row['stuck_count'])->toBe(1);
+        expect($row['resolved_7d_count'])->toBe(1);
+        expect($row['resolved_30d_count'])->toBe(2);
+        expect($row['max_active_tickets'])->toBe(10);
+        expect($row['is_available'])->toBeTrue();
     });
 });

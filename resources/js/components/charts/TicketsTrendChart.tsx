@@ -13,24 +13,34 @@ function formatDay(day: string): string {
  * (`--viz-trend`) is enough on its own here; a lone series needs no legend
  * or categorical palette.
  */
-export function TicketsTrendChart({ data }: { data: TicketsTrendPoint[] }) {
+export function TicketsTrendChart({
+    data,
+    title = 'Tickets created (last 14 days)',
+    emptyTitle = 'No tickets created in this window',
+    valueLabel = 'Tickets',
+}: {
+    data: TicketsTrendPoint[];
+    title?: string;
+    emptyTitle?: string;
+    valueLabel?: string;
+}) {
     const total = data.reduce((sum, point) => sum + point.count, 0);
     const rows = data.map((point) => ({ ...point, label: formatDay(point.day) }));
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Tickets created (last 14 days)</CardTitle>
+                <CardTitle>{title}</CardTitle>
             </CardHeader>
             <CardContent>
                 {total === 0 ? (
-                    <EmptyState title="No tickets created in this window" />
+                    <EmptyState title={emptyTitle} />
                 ) : (
                     <ChartContainer className="aspect-auto h-56">
                         <AreaChart data={rows} margin={{ left: 0, right: 0, top: 10 }}>
                             <CartesianGrid vertical={false} />
                             <XAxis dataKey="label" tickLine={false} axisLine={false} interval={1} />
-                            <ChartTooltip content={<ChartTooltipContent valueLabel="Tickets" />} />
+                            <ChartTooltip content={<ChartTooltipContent valueLabel={valueLabel} />} />
                             <Area
                                 dataKey="count"
                                 type="monotone"
