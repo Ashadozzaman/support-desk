@@ -27,7 +27,7 @@ interface DashboardRepositoryInterface
     public function byPriority(): Collection;
 
     /**
-     * @return Collection<int, array{agent: array{id: int, name: string}|null, count: int}>
+     * @return Collection<int, array{agent: array{id: int, name: string}|null, count: int, max_active_tickets: int|null, is_available: bool|null}>
      */
     public function byAgent(): Collection;
 

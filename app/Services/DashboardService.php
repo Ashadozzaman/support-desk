@@ -17,6 +17,8 @@ class DashboardService
 
     private const TREND_DAYS = 14;
 
+    private const GLOBAL_CACHE_KEY = 'dashboard.global';
+
     public function __construct(private readonly DashboardRepositoryInterface $dashboard) {}
 
     /**
@@ -46,6 +48,20 @@ class DashboardService
         ];
     }
 
+    /**
+     * Scheduled refresh (`dashboard:warm-cache`, every 30s — see
+     * routes/console.php) rebuilds the global aggregate and writes it
+     * unconditionally, so admin requests keep hitting a warm
+     * `Cache::remember` instead of occasionally paying the ~10-15s cold
+     * cost of `summary`/`byPriority`/`byAgent`/`trend` over the full
+     * tickets table. Global stats don't depend on which admin is asking,
+     * so there's no per-user variant to warm here.
+     */
+    public function refreshGlobalCache(): void
+    {
+        Cache::put(self::GLOBAL_CACHE_KEY, $this->buildGlobalStats(), config('support.dashboard.cache_ttl'));
+    }
+
     private function resolveScope(User $user): string
     {
         return match (true) {
@@ -61,16 +77,7 @@ class DashboardService
     private function buildStats(User $user, string $scope): array
     {
         return match ($scope) {
-            'global' => [
-                'scope' => 'global',
-                'stats' => [
-                    ...$this->dashboard->summary(),
-                    'unassigned' => $this->dashboard->unassignedOpenCount(),
-                ],
-                'byPriority' => $this->dashboard->byPriority()->values()->all(),
-                'byAgent' => $this->dashboard->byAgent()->values()->all(),
-                'trend' => $this->trend(),
-            ],
+            'global' => $this->buildGlobalStats(),
             'agent' => [
                 'scope' => 'agent',
                 'stats' => [
@@ -92,6 +99,23 @@ class DashboardService
                 'trend' => $this->trend(customerId: $user->id),
             ],
         };
+    }
+
+    /**
+     * @return array{scope: string, stats: array, byPriority: array, byAgent: array, trend: array}
+     */
+    private function buildGlobalStats(): array
+    {
+        return [
+            'scope' => 'global',
+            'stats' => [
+                ...$this->dashboard->summary(),
+                'unassigned' => $this->dashboard->unassignedOpenCount(),
+            ],
+            'byPriority' => $this->dashboard->byPriority()->values()->all(),
+            'byAgent' => $this->dashboard->byAgent()->values()->all(),
+            'trend' => $this->trend(),
+        ];
     }
 
     /**
@@ -136,7 +160,7 @@ class DashboardService
     private function cacheKey(User $user, string $scope): string
     {
         return match ($scope) {
-            'global' => 'dashboard.global',
+            'global' => self::GLOBAL_CACHE_KEY,
             'agent' => "dashboard.agent.{$user->id}",
             default => "dashboard.customer.{$user->id}",
         };

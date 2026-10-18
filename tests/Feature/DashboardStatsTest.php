@@ -5,12 +5,15 @@ declare(strict_types=1);
 use App\Enums\Role as RoleEnum;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
+use App\Jobs\WarmDashboardCacheJob;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\DashboardService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -153,6 +156,29 @@ test('dashboard stats refresh once the cache ttl has elapsed', function () {
     $response->assertInertia(fn ($page) => $page->where('stats.open_total', 5));
 });
 
+test('dashboard:warm-cache dispatches the warm job, which refreshes the global cache ahead of a request', function () {
+    Queue::fake();
+
+    $this->artisan('dashboard:warm-cache')->assertExitCode(0);
+
+    Queue::assertPushed(WarmDashboardCacheJob::class);
+});
+
+test('warming the dashboard cache primes it so a later request skips recomputation', function () {
+    $admin = makeAdmin();
+
+    Ticket::factory()->count(2)->create(['status' => TicketStatus::Open->value]);
+
+    app(DashboardService::class)->refreshGlobalCache();
+
+    // Created after the cache was warmed — a fresh computation would see 5,
+    // a cache hit (because the job already populated it) must still see 2.
+    Ticket::factory()->count(3)->create(['status' => TicketStatus::Open->value]);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+    $response->assertInertia(fn ($page) => $page->where('stats.open_total', 2));
+});
+
 test('the dashboard query count does not grow with the number of tickets', function () {
     $admin = makeAdmin();
 
@@ -217,6 +243,32 @@ test('approaching-sla tickets are serialized as plain rows, not individually wra
     $response->assertInertia(fn ($page) => $page
         ->has('approachingSla', 1)
         ->where('approachingSla.0.ticket_number', $ticket->ticket_number)
+    );
+});
+
+test('approaching-sla widget excludes tickets that have already breached', function () {
+    $admin = makeAdmin();
+
+    // Breached: both warning AND due are already in the past. This must
+    // never appear in "Approaching" (ARCHITECTURE.md §8.3 — Approaching
+    // requires sla_due_at > now(), Breached requires sla_due_at <= now()).
+    $breached = Ticket::factory()->create([
+        'status' => TicketStatus::Open->value,
+        'sla_due_at' => now()->subHour(),
+        'sla_warning_at' => now()->subHours(2),
+    ]);
+    $approaching = Ticket::factory()->create([
+        'status' => TicketStatus::Open->value,
+        'sla_due_at' => now()->addHour(),
+        'sla_warning_at' => now()->subMinute(),
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->has('approachingSla', 1)
+        ->where('approachingSla.0.ticket_number', $approaching->ticket_number)
     );
 });
 

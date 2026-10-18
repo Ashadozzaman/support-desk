@@ -19,6 +19,8 @@ export type PriorityBreakdown = {
 export type AgentBreakdown = {
     agent: UserSummary | null;
     count: number;
+    max_active_tickets: number | null;
+    is_available: boolean | null;
 };
 
 export type TicketsTrendPoint = {

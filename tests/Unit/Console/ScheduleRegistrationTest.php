@@ -21,3 +21,12 @@ test('tickets:auto-assign is scheduled to run every minute', function () {
     expect($event)->not->toBeNull();
     expect($event->expression)->toBe('* * * * *');
 });
+
+test('dashboard:warm-cache is scheduled to run every 30 seconds', function () {
+    $events = app(Schedule::class)->events();
+
+    $event = collect($events)->first(fn ($e) => str_contains($e->command, 'dashboard:warm-cache'));
+
+    expect($event)->not->toBeNull();
+    expect($event->repeatSeconds)->toBe(30);
+});

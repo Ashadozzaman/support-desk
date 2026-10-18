@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories\Eloquent;
 
 use App\Contracts\Repositories\DashboardRepositoryInterface;
+use App\Enums\SlaState;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use App\Models\Ticket;
@@ -89,22 +90,35 @@ class DashboardRepository implements DashboardRepositoryInterface
             ->active()
             ->toBase()
             ->leftJoin('users', 'users.id', '=', 'tickets.assigned_agent_id')
-            ->selectRaw('tickets.assigned_agent_id AS agent_id, users.name AS agent_name, COUNT(*) AS count')
-            ->groupBy('tickets.assigned_agent_id', 'users.name')
+            ->leftJoin('agent_profiles', 'agent_profiles.user_id', '=', 'tickets.assigned_agent_id')
+            ->selectRaw(<<<'SQL'
+                tickets.assigned_agent_id AS agent_id,
+                users.name AS agent_name,
+                agent_profiles.max_active_tickets AS max_active_tickets,
+                agent_profiles.is_available AS is_available,
+                COUNT(*) AS count
+            SQL)
+            ->groupBy('tickets.assigned_agent_id', 'users.name', 'agent_profiles.max_active_tickets', 'agent_profiles.is_available')
             ->orderByDesc('count')
             ->get()
             ->map(fn ($row) => [
                 'agent' => $row->agent_id === null ? null : ['id' => (int) $row->agent_id, 'name' => $row->agent_name],
                 'count' => (int) $row->count,
+                'max_active_tickets' => $row->max_active_tickets === null ? null : (int) $row->max_active_tickets,
+                'is_available' => $row->is_available === null ? null : (bool) $row->is_available,
             ]);
     }
 
     public function approachingSla(?int $agentId = null, ?int $customerId = null, int $limit = 10): Collection
     {
         return Ticket::query()
-            ->active()
-            ->whereNotNull('sla_warning_at')
-            ->where('sla_warning_at', '<=', now())
+            // Reuses the same predicate as Ticket::scopeSlaState(Approaching)
+            // (ARCHITECTURE.md §8.3) so this widget can never drift from the
+            // documented SLA-state definition — a prior hand-rolled version
+            // of this filter omitted the sla_due_at > now() half and ended
+            // up including already-breached tickets, which also defeated
+            // the (status, sla_due_at) index (full table scan + filesort).
+            ->slaState(SlaState::Approaching)
             ->when($agentId !== null, fn (Builder $q) => $q->where('assigned_agent_id', $agentId))
             ->when($customerId !== null, fn (Builder $q) => $q->where('created_by', $customerId))
             ->with(['category:id,name', 'assignedAgent:id,name', 'creator:id,name'])
