@@ -30,6 +30,7 @@ class TicketRepository implements TicketRepositoryInterface
             'priority' => $data->priority,
             'category_id' => $data->categoryId,
             'created_by' => $data->createdBy,
+            'external_ref' => $data->externalRef,
             'sla_due_at' => $slaDueAt,
             'sla_warning_at' => $slaWarningAt,
         ]);

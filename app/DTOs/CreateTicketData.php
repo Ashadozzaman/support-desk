@@ -14,5 +14,6 @@ readonly class CreateTicketData
         public TicketPriority $priority,
         public ?int $categoryId,
         public int $createdBy,
+        public ?string $externalRef = null,
     ) {}
 }

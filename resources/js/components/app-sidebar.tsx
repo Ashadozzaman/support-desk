@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, Clock, FolderGit2, LayoutGrid, TicketIcon } from 'lucide-react';
+import { BookOpen, Clock, FolderGit2, LayoutGrid, TicketIcon, UploadIcon } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -16,6 +16,7 @@ import {
 import { useCan } from '@/hooks/use-can';
 import { dashboard } from '@/routes';
 import { index as businessHoursIndex } from '@/routes/admin/business-hours';
+import { index as importsIndex } from '@/routes/admin/imports';
 import { index as slaPoliciesIndex } from '@/routes/admin/sla-policies';
 import { index as ticketsIndex } from '@/routes/tickets';
 import type { NavItem } from '@/types';
@@ -49,6 +50,7 @@ const footerNavItems: NavItem[] = [
 export function AppSidebar() {
     const canManageSla = useCan('sla.manage');
     const canManageBusinessHours = useCan('business-hours.manage');
+    const canManageImports = useCan('imports.manage');
 
     const mainNavItems: NavItem[] = [
         ...baseNavItems,
@@ -57,6 +59,9 @@ export function AppSidebar() {
             : []),
         ...(canManageBusinessHours
             ? [{ title: 'Business Hours', href: businessHoursIndex(), icon: Clock } satisfies NavItem]
+            : []),
+        ...(canManageImports
+            ? [{ title: 'CSV Imports', href: importsIndex(), icon: UploadIcon } satisfies NavItem]
             : []),
     ];
 

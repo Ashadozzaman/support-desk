@@ -61,6 +61,7 @@ return [
     */
     'import' => [
         'chunk_size' => (int) env('SUPPORT_IMPORT_CHUNK_SIZE', 500),
+        'max_kb' => (int) env('SUPPORT_IMPORT_MAX_KB', 20480),
     ],
 
     /*

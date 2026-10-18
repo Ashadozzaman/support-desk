@@ -17,6 +17,7 @@
         "laravel/reverb": "^1.0",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14",
+        "league/csv": "^9.28",
         "spatie/laravel-permission": "^8.3"
     },
     "require-dev": {

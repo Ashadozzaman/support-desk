@@ -1,0 +1,6 @@
+subject,description,priority,category,customer_email
+Cannot log into billing portal,I reset my password twice and still cannot sign in.,high,billing,customer1@support-desk.test
+Feature request: dark mode,Please add a dark theme to the dashboard.,low,feature-request,customer2@support-desk.test
+App crashes on upload,The app crashes every time I attach a PDF larger than 2MB.,critical,technical-support,customer3@support-desk.test
+Invoice shows wrong total,My March invoice total does not match what I was quoted.,medium,billing,customer4@support-desk.test
+How do I change my email address,Just need the steps to update my account email.,low,account-access,customer5@support-desk.test
