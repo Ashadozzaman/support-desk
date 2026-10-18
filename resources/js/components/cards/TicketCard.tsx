@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AssignAgentDialog } from '@/components/ticket/AssignAgentDialog';
 import { ClaimTicketButton } from '@/components/ticket/ClaimTicketButton';
 import { PriorityBadge } from '@/components/ticket/PriorityBadge';
+import { SlaBadge } from '@/components/ticket/SlaBadge';
 import { StatusBadge } from '@/components/ticket/StatusBadge';
 import { show } from '@/routes/tickets';
 import type { AgentOption, TicketListItem } from '@/types/ticket';
@@ -18,9 +19,10 @@ export function TicketCard({ ticket, agents = [] }: { ticket: TicketListItem; ag
                         <span className="text-muted-foreground font-mono text-xs">
                             {ticket.ticket_number}
                         </span>
-                        <div className="flex gap-1.5">
+                        <div className="flex flex-wrap justify-end gap-1.5">
                             <PriorityBadge priority={ticket.priority} />
                             <StatusBadge status={ticket.status} />
+                            <SlaBadge ticket={ticket} />
                         </div>
                     </div>
                     <p className="font-medium">{ticket.subject}</p>

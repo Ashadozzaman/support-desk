@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\SlaState;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use Database\Factories\TicketFactory;
@@ -97,6 +98,29 @@ class Ticket extends Model
     public function activities(): HasMany
     {
         return $this->hasMany(TicketActivity::class);
+    }
+
+    public function currentSlaState(): ?SlaState
+    {
+        return SlaState::resolve($this->status, $this->sla_met, $this->sla_due_at, $this->sla_warning_at);
+    }
+
+    /**
+     * SLA filter predicates (ARCHITECTURE.md §8.3), consumed by the search
+     * filters added in Step 12.
+     *
+     * @param  Builder<Ticket>  $query
+     * @return Builder<Ticket>
+     */
+    public function scopeSlaState(Builder $query, SlaState $state): Builder
+    {
+        return match ($state) {
+            SlaState::WithinSla => $query->active()->where('sla_warning_at', '>', now()),
+            SlaState::Approaching => $query->active()->where('sla_warning_at', '<=', now())->where('sla_due_at', '>', now()),
+            SlaState::Breached => $query->active()->where('sla_due_at', '<=', now()),
+            SlaState::Met => $query->resolved()->where('sla_met', true),
+            SlaState::MetLate => $query->resolved()->where('sla_met', false),
+        };
     }
 
     /**

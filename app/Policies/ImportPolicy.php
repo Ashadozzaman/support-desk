@@ -11,7 +11,7 @@ use App\Models\User;
  * CSV import is an admin-only feature with a single ability; the controller
  * (Step 14) authorizes every action against it.
  */
-final class ImportPolicy
+class ImportPolicy
 {
     public function manage(User $user): bool
     {

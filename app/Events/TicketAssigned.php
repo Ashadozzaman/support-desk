@@ -12,7 +12,7 @@ use Illuminate\Foundation\Events\Dispatchable;
  * (claim, manual assign/reassign, auto-assign). No listeners yet — wired up
  * for notifications in Step 10 and broadcasting in Step 11.
  */
-final class TicketAssigned
+class TicketAssigned
 {
     use Dispatchable;
 

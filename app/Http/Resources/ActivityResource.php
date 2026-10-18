@@ -17,7 +17,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * @mixin TicketActivity
  */
-final class ActivityResource extends JsonResource
+class ActivityResource extends JsonResource
 {
     /**
      * @return array<string, mixed>

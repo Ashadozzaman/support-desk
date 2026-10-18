@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
-final class AssignTicketRequest extends FormRequest
+class AssignTicketRequest extends FormRequest
 {
     public function authorize(): bool
     {

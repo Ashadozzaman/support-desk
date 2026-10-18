@@ -11,7 +11,7 @@ use App\Models\TicketActivity;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 
-final class ActivityLogService
+class ActivityLogService
 {
     public function __construct(private readonly ActivityRepositoryInterface $activities) {}
 

@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Collection;
  * agent could take at creation time — an agent may have become available
  * since, and nothing else would re-trigger the attempt.
  */
-final class AutoAssignTickets extends Command
+class AutoAssignTickets extends Command
 {
     protected $signature = 'tickets:auto-assign';
 

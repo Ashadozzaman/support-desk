@@ -19,7 +19,7 @@ use Throwable;
  * queue `default`). Unique per ticket so a burst of retries from the
  * `tickets:auto-assign` sweep never double-queues the same ticket.
  */
-final class AutoAssignTicketJob implements ShouldBeUnique, ShouldQueue
+class AutoAssignTicketJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 

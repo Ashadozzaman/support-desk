@@ -17,7 +17,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
-final class ReplyService
+class ReplyService
 {
     public function __construct(
         private readonly ReplyRepositoryInterface $replies,

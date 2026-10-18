@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
-final class AttachmentService
+class AttachmentService
 {
     public function __construct(private readonly AttachmentRepositoryInterface $attachments) {}
 

@@ -9,7 +9,7 @@ use App\Enums\TicketPriority;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-final class UpdateTicketRequest extends FormRequest
+class UpdateTicketRequest extends FormRequest
 {
     public function authorize(): bool
     {

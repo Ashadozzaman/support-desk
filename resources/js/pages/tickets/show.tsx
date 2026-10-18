@@ -8,6 +8,7 @@ import { ReplyThread } from '@/components/reply/ReplyThread';
 import { AssignAgentDialog } from '@/components/ticket/AssignAgentDialog';
 import { ClaimTicketButton } from '@/components/ticket/ClaimTicketButton';
 import { PriorityBadge } from '@/components/ticket/PriorityBadge';
+import { SlaBadge } from '@/components/ticket/SlaBadge';
 import { StatusBadge } from '@/components/ticket/StatusBadge';
 import { dashboard } from '@/routes';
 import { edit, index, show } from '@/routes/tickets';
@@ -42,6 +43,7 @@ export default function TicketsShow({
                     <div className="flex items-center gap-2">
                         <PriorityBadge priority={t.priority} />
                         <StatusBadge status={t.status} />
+                        <SlaBadge ticket={t} />
                         {can.claim && <ClaimTicketButton ticketNumber={t.ticket_number} />}
                         {can.assign && (
                             <AssignAgentDialog
@@ -81,6 +83,10 @@ export default function TicketsShow({
                         <Detail
                             label="Created"
                             value={new Date(t.created_at).toLocaleString()}
+                        />
+                        <Detail
+                            label="SLA due"
+                            value={t.sla_due_at ? new Date(t.sla_due_at).toLocaleString() : 'No SLA'}
                         />
                     </CardContent>
                 </Card>

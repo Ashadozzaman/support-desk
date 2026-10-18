@@ -14,7 +14,7 @@ use App\Models\User;
  * Open/Closed strategy slot: pure round-robin by oldest last_assigned_at,
  * ignoring current workload.
  */
-final class RoundRobinStrategy implements AssignmentStrategy
+class RoundRobinStrategy implements AssignmentStrategy
 {
     public function __construct(private readonly AgentRepositoryInterface $agents) {}
 

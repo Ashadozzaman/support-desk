@@ -13,7 +13,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * @mixin Attachment
  */
-final class AttachmentResource extends JsonResource
+class AttachmentResource extends JsonResource
 {
     /**
      * @return array<string, mixed>

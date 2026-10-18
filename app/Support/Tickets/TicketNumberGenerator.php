@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
  * as late as possible in it, since every other writer for the same year
  * blocks until this transaction commits.
  */
-final class TicketNumberGenerator
+class TicketNumberGenerator
 {
     public function next(): string
     {

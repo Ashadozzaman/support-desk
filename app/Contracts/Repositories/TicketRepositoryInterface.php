@@ -25,7 +25,7 @@ interface TicketRepositoryInterface
 
     public function countActiveForAgent(int $agentId): int;
 
-    public function update(Ticket $ticket, UpdateTicketData $data): Ticket;
+    public function update(Ticket $ticket, UpdateTicketData $data, ?CarbonImmutable $slaDueAt, ?CarbonImmutable $slaWarningAt): Ticket;
 
     public function updateStatus(Ticket $ticket, TicketStatus $status): Ticket;
 

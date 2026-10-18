@@ -8,7 +8,7 @@ use App\Models\Attachment;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-final class AttachmentController extends Controller
+class AttachmentController extends Controller
 {
     public function download(Attachment $attachment): StreamedResponse
     {

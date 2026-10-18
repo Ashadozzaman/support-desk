@@ -13,7 +13,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * @mixin Ticket
  */
-final class TicketResource extends JsonResource
+class TicketResource extends JsonResource
 {
     /**
      * @return array<string, mixed>

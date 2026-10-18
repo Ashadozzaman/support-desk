@@ -13,7 +13,7 @@ use App\Models\User;
  * Default strategy (ARCHITECTURE.md §6.2): fewest active tickets first,
  * then oldest last_assigned_at as a round-robin tie-break.
  */
-final class LeastWorkloadStrategy implements AssignmentStrategy
+class LeastWorkloadStrategy implements AssignmentStrategy
 {
     public function __construct(private readonly AgentRepositoryInterface $agents) {}
 

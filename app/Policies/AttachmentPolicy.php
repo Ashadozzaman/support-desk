@@ -10,7 +10,7 @@ use App\Models\Attachment;
 use App\Models\Ticket;
 use App\Models\User;
 
-final class AttachmentPolicy
+class AttachmentPolicy
 {
     public function upload(User $user, Ticket $ticket): bool
     {

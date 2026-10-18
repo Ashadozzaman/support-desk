@@ -12,7 +12,7 @@ use App\Models\TicketReply;
 use App\Services\ReplyService;
 use Illuminate\Http\RedirectResponse;
 
-final class ReplyController extends Controller
+class ReplyController extends Controller
 {
     public function __construct(private readonly ReplyService $replies) {}
 

@@ -16,7 +16,7 @@ use App\Models\User;
  * AppServiceProvider since the class name doesn't match TicketReply's
  * auto-discovery convention.
  */
-final class ReplyPolicy
+class ReplyPolicy
 {
     public function create(User $user, Ticket $ticket): bool
     {

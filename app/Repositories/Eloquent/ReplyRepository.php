@@ -12,7 +12,7 @@ use App\Models\TicketReply;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 
-final class ReplyRepository implements ReplyRepositoryInterface
+class ReplyRepository implements ReplyRepositoryInterface
 {
     public function create(Ticket $ticket, User $user, ReplyType $type, string $body): TicketReply
     {

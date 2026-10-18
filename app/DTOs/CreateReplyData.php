@@ -6,7 +6,7 @@ namespace App\DTOs;
 
 use Illuminate\Http\UploadedFile;
 
-final readonly class CreateReplyData
+readonly class CreateReplyData
 {
     /**
      * @param  array<int, UploadedFile>  $attachments

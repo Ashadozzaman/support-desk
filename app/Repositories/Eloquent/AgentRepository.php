@@ -10,7 +10,7 @@ use App\Models\Ticket;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
-final class AgentRepository implements AgentRepositoryInterface
+class AgentRepository implements AgentRepositoryInterface
 {
     public function candidatesFor(?int $categoryId): Collection
     {

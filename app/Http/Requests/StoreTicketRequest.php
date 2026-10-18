@@ -9,7 +9,7 @@ use App\Enums\TicketPriority;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-final class StoreTicketRequest extends FormRequest
+class StoreTicketRequest extends FormRequest
 {
     /**
      * Authorization is checked explicitly in the controller

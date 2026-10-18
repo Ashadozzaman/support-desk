@@ -6,7 +6,7 @@ namespace App\DTOs;
 
 use App\Enums\TicketPriority;
 
-final readonly class CreateTicketData
+readonly class CreateTicketData
 {
     public function __construct(
         public string $subject,

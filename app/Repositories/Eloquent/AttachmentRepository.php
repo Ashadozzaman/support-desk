@@ -10,7 +10,7 @@ use App\Models\Ticket;
 use App\Models\TicketReply;
 use App\Models\User;
 
-final class AttachmentRepository implements AttachmentRepositoryInterface
+class AttachmentRepository implements AttachmentRepositoryInterface
 {
     public function create(
         Ticket $ticket,

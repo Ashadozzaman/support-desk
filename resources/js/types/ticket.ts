@@ -22,6 +22,45 @@ export const TICKET_PRIORITY_LABELS: Record<TicketPriorityValue, string> = {
     critical: 'Critical',
 };
 
+export type SlaStateValue = 'within' | 'approaching' | 'breached' | 'met' | 'met_late';
+
+export const SLA_STATE_LABELS: Record<SlaStateValue, string> = {
+    within: 'Within SLA',
+    approaching: 'Approaching SLA',
+    breached: 'SLA breached',
+    met: 'SLA met',
+    met_late: 'SLA met late',
+};
+
+const ACTIVE_STATUSES: TicketStatusValue[] = ['open', 'in_progress', 'waiting_for_customer'];
+
+export function getSlaState(ticket: {
+    status: TicketStatusValue;
+    sla_due_at: string | null;
+    sla_warning_at: string | null;
+    sla_met: boolean | null;
+}): SlaStateValue | null {
+    if (ticket.sla_due_at === null) {
+        return null;
+    }
+
+    if (!ACTIVE_STATUSES.includes(ticket.status)) {
+        return ticket.sla_met ? 'met' : 'met_late';
+    }
+
+    const now = Date.now();
+
+    if (new Date(ticket.sla_due_at).getTime() <= now) {
+        return 'breached';
+    }
+
+    if (ticket.sla_warning_at !== null && new Date(ticket.sla_warning_at).getTime() <= now) {
+        return 'approaching';
+    }
+
+    return 'within';
+}
+
 export type CategoryOption = {
     id: number;
     name: string;
@@ -52,6 +91,7 @@ export type TicketListItem = {
     creator: UserSummary;
     sla_due_at: string | null;
     sla_warning_at: string | null;
+    sla_met: boolean | null;
     created_at: string;
     can: TicketListAbilities;
 };

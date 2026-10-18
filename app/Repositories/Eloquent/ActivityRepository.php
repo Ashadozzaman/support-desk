@@ -12,7 +12,7 @@ use App\Models\TicketActivity;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 
-final class ActivityRepository implements ActivityRepositoryInterface
+class ActivityRepository implements ActivityRepositoryInterface
 {
     public function create(
         Ticket $ticket,

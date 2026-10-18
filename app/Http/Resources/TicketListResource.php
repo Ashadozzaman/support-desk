@@ -13,7 +13,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * @mixin Ticket
  */
-final class TicketListResource extends JsonResource
+class TicketListResource extends JsonResource
 {
     /**
      * @return array<string, mixed>
@@ -41,6 +41,7 @@ final class TicketListResource extends JsonResource
             ]),
             'sla_due_at' => $this->sla_due_at,
             'sla_warning_at' => $this->sla_warning_at,
+            'sla_met' => $this->sla_met,
             'created_at' => $this->created_at,
             'can' => [
                 'view' => $user?->can('view', $this->resource) ?? false,

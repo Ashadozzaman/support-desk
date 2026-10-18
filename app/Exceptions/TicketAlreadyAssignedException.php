@@ -11,4 +11,4 @@ use RuntimeException;
  * UPDATE affects 0 rows — another agent won the race first (ARCHITECTURE.md
  * §7). Mapped to HTTP 409 in bootstrap/app.php.
  */
-final class TicketAlreadyAssignedException extends RuntimeException {}
+class TicketAlreadyAssignedException extends RuntimeException {}

@@ -3,6 +3,7 @@ import { TicketCard } from '@/components/cards/TicketCard';
 import { AssignAgentDialog } from '@/components/ticket/AssignAgentDialog';
 import { ClaimTicketButton } from '@/components/ticket/ClaimTicketButton';
 import { PriorityBadge } from '@/components/ticket/PriorityBadge';
+import { SlaBadge } from '@/components/ticket/SlaBadge';
 import { StatusBadge } from '@/components/ticket/StatusBadge';
 import { show } from '@/routes/tickets';
 import type { AgentOption, TicketListItem } from '@/types/ticket';
@@ -18,6 +19,7 @@ export function TicketTable({ tickets, agents }: { tickets: TicketListItem[]; ag
                             <th className="px-4 py-2 font-medium">Subject</th>
                             <th className="px-4 py-2 font-medium">Status</th>
                             <th className="px-4 py-2 font-medium">Priority</th>
+                            <th className="px-4 py-2 font-medium">SLA</th>
                             <th className="px-4 py-2 font-medium">Category</th>
                             <th className="px-4 py-2 font-medium">Assigned to</th>
                             <th className="px-4 py-2 font-medium">Created</th>
@@ -41,6 +43,9 @@ export function TicketTable({ tickets, agents }: { tickets: TicketListItem[]; ag
                                 </td>
                                 <td className="px-4 py-2">
                                     <PriorityBadge priority={ticket.priority} />
+                                </td>
+                                <td className="px-4 py-2">
+                                    <SlaBadge ticket={ticket} />
                                 </td>
                                 <td className="px-4 py-2">{ticket.category?.name ?? '—'}</td>
                                 <td className="px-4 py-2">

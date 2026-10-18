@@ -24,7 +24,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-final class TicketController extends Controller
+class TicketController extends Controller
 {
     public function __construct(
         private readonly TicketService $tickets,

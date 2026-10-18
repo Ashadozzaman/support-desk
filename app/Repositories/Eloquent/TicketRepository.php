@@ -15,7 +15,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
-final class TicketRepository implements TicketRepositoryInterface
+class TicketRepository implements TicketRepositoryInterface
 {
     public function __construct(private readonly TicketNumberGenerator $numbers) {}
 
@@ -51,7 +51,7 @@ final class TicketRepository implements TicketRepositoryInterface
             ])
             ->select([
                 'id', 'ticket_number', 'subject', 'status', 'priority', 'category_id',
-                'assigned_agent_id', 'created_by', 'sla_due_at', 'sla_warning_at', 'created_at',
+                'assigned_agent_id', 'created_by', 'sla_due_at', 'sla_warning_at', 'sla_met', 'created_at',
             ])
             ->latest()
             ->paginate(15)
@@ -63,13 +63,15 @@ final class TicketRepository implements TicketRepositoryInterface
         return Ticket::query()->where('assigned_agent_id', $agentId)->active()->count();
     }
 
-    public function update(Ticket $ticket, UpdateTicketData $data): Ticket
+    public function update(Ticket $ticket, UpdateTicketData $data, ?CarbonImmutable $slaDueAt, ?CarbonImmutable $slaWarningAt): Ticket
     {
         $ticket->update([
             'subject' => $data->subject,
             'description' => $data->description,
             'category_id' => $data->categoryId,
             'priority' => $data->priority,
+            'sla_due_at' => $slaDueAt,
+            'sla_warning_at' => $slaWarningAt,
         ]);
 
         return $ticket;

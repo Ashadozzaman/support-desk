@@ -13,7 +13,7 @@ use App\Models\User;
  * Every ability checks a PERMISSION first, then ownership/assignment
  * (ARCHITECTURE.md §3) — never $user->hasRole() directly.
  */
-final class TicketPolicy
+class TicketPolicy
 {
     public function viewAny(User $user): bool
     {

@@ -9,7 +9,7 @@ use App\Enums\ReplyType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-final class StoreReplyRequest extends FormRequest
+class StoreReplyRequest extends FormRequest
 {
     /**
      * Authorization is checked explicitly in the controller, since which

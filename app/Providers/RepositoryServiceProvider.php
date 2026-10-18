@@ -9,18 +9,20 @@ use App\Contracts\Repositories\ActivityRepositoryInterface;
 use App\Contracts\Repositories\AgentRepositoryInterface;
 use App\Contracts\Repositories\AttachmentRepositoryInterface;
 use App\Contracts\Repositories\ReplyRepositoryInterface;
+use App\Contracts\Repositories\SlaConfigRepositoryInterface;
 use App\Contracts\Repositories\TicketRepositoryInterface;
 use App\Repositories\Eloquent\ActivityRepository;
 use App\Repositories\Eloquent\AgentRepository;
 use App\Repositories\Eloquent\AttachmentRepository;
 use App\Repositories\Eloquent\ReplyRepository;
+use App\Repositories\Eloquent\SlaConfigRepository;
 use App\Repositories\Eloquent\TicketRepository;
 use App\Support\Assignment\LeastWorkloadStrategy;
 use App\Support\Assignment\RoundRobinStrategy;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 
-final class RepositoryServiceProvider extends ServiceProvider
+class RepositoryServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
@@ -34,6 +36,7 @@ final class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(ReplyRepositoryInterface::class, ReplyRepository::class);
         $this->app->bind(AttachmentRepositoryInterface::class, AttachmentRepository::class);
         $this->app->bind(AgentRepositoryInterface::class, AgentRepository::class);
+        $this->app->bind(SlaConfigRepositoryInterface::class, SlaConfigRepository::class);
 
         // Strategy selected from config, not hard-coded (ARCHITECTURE.md §6.2 OCP note).
         $this->app->bind(AssignmentStrategy::class, function (Application $app) {

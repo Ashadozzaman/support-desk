@@ -15,7 +15,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
-final class TicketAssignmentService
+class TicketAssignmentService
 {
     public function __construct(
         private readonly TicketRepositoryInterface $tickets,

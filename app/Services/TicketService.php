@@ -14,22 +14,24 @@ use App\Jobs\AutoAssignTicketJob;
 use App\Models\Category;
 use App\Models\Ticket;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
-final class TicketService
+class TicketService
 {
     public function __construct(
         private readonly TicketRepositoryInterface $tickets,
         private readonly ActivityLogService $activity,
+        private readonly SlaService $sla,
     ) {}
 
     public function create(CreateTicketData $data, User $actor): Ticket
     {
         return DB::transaction(function () use ($data, $actor) {
-            // SLA is not computed yet (placeholder null; wired up in Step 9).
-            $ticket = $this->tickets->create($data, null, null);
+            $window = $this->sla->calculate($data->priority, CarbonImmutable::now());
+            $ticket = $this->tickets->create($data, $window->dueAt, $window->warningAt);
 
             $this->activity->log(
                 $ticket,
@@ -59,7 +61,10 @@ final class TicketService
                 'category_id' => $ticket->category_id,
             ];
 
-            $updated = $this->tickets->update($ticket, $data);
+            // Recomputed from created_at (not the moment of the change) per
+            // the documented assumption in ARCHITECTURE.md §8.2.
+            $window = $this->sla->calculate($data->priority, CarbonImmutable::parse($ticket->created_at));
+            $updated = $this->tickets->update($ticket, $data, $window->dueAt, $window->warningAt);
 
             if ($before['priority'] !== $data->priority->value) {
                 $this->activity->log(
