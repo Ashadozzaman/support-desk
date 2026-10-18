@@ -6,7 +6,7 @@ use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\Admin\SlaPolicyController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('sla-policies', [SlaPolicyController::class, 'index'])->name('sla-policies.index');
     Route::put('sla-policies', [SlaPolicyController::class, 'update'])->name('sla-policies.update');
 
