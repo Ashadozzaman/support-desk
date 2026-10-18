@@ -8,6 +8,7 @@ use App\Contracts\Repositories\TicketRepositoryInterface;
 use App\DTOs\CreateTicketData;
 use App\DTOs\TicketFilterData;
 use App\DTOs\UpdateTicketData;
+use App\Enums\ActivityEvent;
 use App\Enums\Permission;
 use App\Enums\TicketStatus;
 use App\Models\Ticket;
@@ -183,12 +184,82 @@ class TicketRepository implements TicketRepositoryInterface
             default => null,
         };
 
-        $ticket->update([
-            'status' => $status,
-            'resolved_at' => $resolvedAt,
-        ]);
+        $attributes = ['status' => $status, 'resolved_at' => $resolvedAt];
+
+        if ($resolvedAt === null) {
+            $attributes['sla_met'] = null;
+            $attributes['resolution_minutes'] = null;
+        }
+
+        $ticket->update($attributes);
 
         return $ticket;
+    }
+
+    public function recordResolutionMetrics(Ticket $ticket, ?bool $slaMet, int $resolutionMinutes): Ticket
+    {
+        $ticket->update(['sla_met' => $slaMet, 'resolution_minutes' => $resolutionMinutes]);
+
+        return $ticket;
+    }
+
+    public function recordFirstResponseMinutes(Ticket $ticket, int $minutes): Ticket
+    {
+        $ticket->update(['first_response_minutes' => $minutes]);
+
+        return $ticket;
+    }
+
+    public function incrementReopenedCount(Ticket $ticket): Ticket
+    {
+        $ticket->increment('reopened_count');
+
+        return $ticket;
+    }
+
+    public function chunkMissingMetrics(int $size, callable $callback): void
+    {
+        Ticket::query()
+            ->select(['id', 'created_at', 'first_response_at', 'first_response_minutes', 'resolved_at', 'resolution_minutes', 'sla_due_at', 'sla_met'])
+            ->where(function (Builder $query) {
+                $query->where(fn (Builder $q) => $q->whereNotNull('first_response_at')->whereNull('first_response_minutes'))
+                    ->orWhere(fn (Builder $q) => $q->whereNotNull('resolved_at')->whereNull('resolution_minutes'))
+                    ->orWhere(fn (Builder $q) => $q->whereNotNull('resolved_at')->whereNotNull('sla_due_at')->whereNull('sla_met'));
+            })
+            ->chunkById($size, $callback);
+    }
+
+    public function updateMetricsById(int $ticketId, ?int $firstResponseMinutes, ?int $resolutionMinutes, ?bool $slaMet): void
+    {
+        Ticket::query()->whereKey($ticketId)->update([
+            'first_response_minutes' => $firstResponseMinutes,
+            'resolution_minutes' => $resolutionMinutes,
+            'sla_met' => $slaMet,
+        ]);
+    }
+
+    public function recountReopensFromActivity(): int
+    {
+        // One UPDATE … JOIN over a grouped count, so the result is the same
+        // however many times it runs (SET =, never +=).
+        return DB::update(
+            "UPDATE tickets t
+             JOIN (
+                 SELECT ticket_id, COUNT(*) AS reopens
+                 FROM ticket_activities
+                 WHERE event = ?
+                    OR (event = ? AND old_values->>'$.status' = ? AND new_values->>'$.status' = ?)
+                 GROUP BY ticket_id
+             ) a ON a.ticket_id = t.id
+             SET t.reopened_count = a.reopens
+             WHERE t.reopened_count <> a.reopens",
+            [
+                ActivityEvent::TicketReopened->value,
+                ActivityEvent::StatusChanged->value,
+                TicketStatus::Resolved->value,
+                TicketStatus::Open->value,
+            ],
+        );
     }
 
     public function recordReply(Ticket $ticket, bool $isStaffReply): Ticket

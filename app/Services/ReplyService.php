@@ -26,6 +26,7 @@ class ReplyService
         private readonly TicketRepositoryInterface $tickets,
         private readonly AttachmentService $attachments,
         private readonly ActivityLogService $activity,
+        private readonly TicketMetricsService $metrics,
     ) {}
 
     public function addReply(Ticket $ticket, CreateReplyData $data, User $actor): TicketReply
@@ -38,7 +39,12 @@ class ReplyService
             }
 
             $isStaffReply = $this->isStaff($actor);
+            $isFirstResponse = $isStaffReply && $ticket->first_response_at === null;
             $this->tickets->recordReply($ticket, $isStaffReply);
+
+            if ($isFirstResponse) {
+                $this->metrics->recordFirstResponse($ticket);
+            }
 
             // A customer reply to a resolved ticket means the issue isn't
             // actually fixed — reopen it (ARCHITECTURE.md §5). Staff replies
@@ -46,6 +52,7 @@ class ReplyService
             if (! $isStaffReply && $ticket->status === TicketStatus::Resolved) {
                 $old = $ticket->status->value;
                 $this->tickets->updateStatus($ticket, TicketStatus::Open);
+                $this->metrics->recordReopen($ticket);
 
                 $this->activity->log(
                     $ticket,

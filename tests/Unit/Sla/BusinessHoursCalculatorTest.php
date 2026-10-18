@@ -92,3 +92,55 @@ test('exactly 18:00 is treated as past closing, not within hours', function () {
 
     expect($result->setTimezone('Asia/Dhaka')->format('Y-m-d H:i'))->toBe('2026-01-04 09:30');
 });
+
+/*
+ * businessMinutesBetween() — the inverse of addBusinessMinutes(), used for
+ * report metrics (first response / resolution time).
+ */
+dataset('business minutes between', [
+    'same working day' => ['2026-01-04 09:00', '2026-01-04 11:30', 150],
+    'before opening is not counted' => ['2026-01-04 07:00', '2026-01-04 10:00', 60],
+    'after closing is not counted' => ['2026-01-04 17:00', '2026-01-04 21:00', 60],
+    'whole working day' => ['2026-01-04 00:00', '2026-01-05 00:00', 540],
+    'Thu 17:00 to Sun 10:00 skips the weekend' => ['2026-01-01 17:00', '2026-01-04 10:00', 120],
+    'entirely inside the weekend' => ['2026-01-02 10:00', '2026-01-03 16:00', 0],
+    'Sun 09:00 to next Sun 09:00 is five working days' => ['2026-01-04 09:00', '2026-01-11 09:00', 2700],
+    'end before start' => ['2026-01-04 12:00', '2026-01-04 10:00', 0],
+    'same instant' => ['2026-01-04 12:00', '2026-01-04 12:00', 0],
+]);
+
+test('business minutes between two instants', function (string $start, string $end, int $expected) {
+    $minutes = app(BusinessHoursCalculator::class)->businessMinutesBetween(dhaka($start), dhaka($end));
+
+    expect($minutes)->toBe($expected);
+})->with('business minutes between');
+
+test('business minutes between skips a holiday', function () {
+    Holiday::factory()->create(['date' => '2026-01-04', 'name' => 'Test holiday']);
+
+    // Thu 17:00 → Mon 10:00 with Sunday off: 60 (Thu) + 60 (Mon).
+    $minutes = app(BusinessHoursCalculator::class)->businessMinutesBetween(dhaka('2026-01-01 17:00'), dhaka('2026-01-05 10:00'));
+
+    expect($minutes)->toBe(120);
+});
+
+test('business minutes between is the inverse of addBusinessMinutes', function (string $start, int $minutes) {
+    $calculator = app(BusinessHoursCalculator::class);
+    $end = $calculator->addBusinessMinutes(dhaka($start), $minutes);
+
+    expect($calculator->businessMinutesBetween(dhaka($start), $end))->toBe($minutes);
+})->with([
+    ['2026-01-01 17:00', 120],
+    ['2026-01-01 17:59', 120],
+    ['2026-01-02 11:00', 480],
+    ['2026-01-04 07:30', 1440],
+    ['2026-01-04 09:00', 2880],
+]);
+
+test('business minutes between is zero when no day is a working day', function () {
+    BusinessHour::query()->update(['is_working_day' => false, 'start_time' => null, 'end_time' => null]);
+
+    $minutes = app(BusinessHoursCalculator::class)->businessMinutesBetween(dhaka('2026-01-01 09:00'), dhaka('2026-01-08 09:00'));
+
+    expect($minutes)->toBe(0);
+});

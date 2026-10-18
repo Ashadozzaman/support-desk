@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'created_by', 'assigned_agent_id', 'external_ref', 'sla_due_at', 'sla_warning_at',
     'sla_warning_notified_at', 'sla_breach_notified_at', 'escalated_at', 'escalation_level',
     'first_response_at', 'last_reply_at', 'resolved_at', 'sla_met', 'version', 'assigned_at',
+    'first_response_minutes', 'resolution_minutes', 'reopened_count',
 ])]
 class Ticket extends Model
 {
@@ -50,6 +51,9 @@ class Ticket extends Model
             'resolved_at' => 'datetime',
             'assigned_at' => 'datetime',
             'sla_met' => 'boolean',
+            'first_response_minutes' => 'integer',
+            'resolution_minutes' => 'integer',
+            'reopened_count' => 'integer',
         ];
     }
 

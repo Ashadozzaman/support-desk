@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             SlaPolicySeeder::class,
             BusinessHourSeeder::class,
             DemoUsersSeeder::class,
+            DemoTicketSeeder::class,
         ]);
     }
 }

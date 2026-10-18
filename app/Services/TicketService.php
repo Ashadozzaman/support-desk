@@ -30,6 +30,7 @@ class TicketService
         private readonly TicketRepositoryInterface $tickets,
         private readonly ActivityLogService $activity,
         private readonly SlaService $sla,
+        private readonly TicketMetricsService $metrics,
     ) {}
 
     public function create(CreateTicketData $data, User $actor): Ticket
@@ -126,6 +127,14 @@ class TicketService
         return DB::transaction(function () use ($ticket, $target, $actor) {
             $from = $ticket->status;
             $updated = $this->tickets->updateStatus($ticket, $target);
+
+            if ($target === TicketStatus::Resolved) {
+                $this->metrics->recordResolution($updated);
+            }
+
+            if ($from === TicketStatus::Resolved && $target === TicketStatus::Open) {
+                $this->metrics->recordReopen($updated);
+            }
 
             $this->activity->log(
                 $updated,

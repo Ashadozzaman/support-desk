@@ -11,6 +11,7 @@ use App\Enums\TicketStatus;
 use App\Models\Ticket;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface TicketRepositoryInterface
@@ -28,7 +29,37 @@ interface TicketRepositoryInterface
 
     public function update(Ticket $ticket, UpdateTicketData $data, ?CarbonImmutable $slaDueAt, ?CarbonImmutable $slaWarningAt): Ticket;
 
+    /**
+     * Sets resolved_at on Resolved, keeps it on Closed, and clears it —
+     * together with sla_met/resolution_minutes — on any other target, since
+     * the ticket is no longer resolved.
+     */
     public function updateStatus(Ticket $ticket, TicketStatus $status): Ticket;
+
+    public function recordResolutionMetrics(Ticket $ticket, ?bool $slaMet, int $resolutionMinutes): Ticket;
+
+    public function recordFirstResponseMinutes(Ticket $ticket, int $minutes): Ticket;
+
+    /**
+     * Atomic `reopened_count = reopened_count + 1` — never read-then-write.
+     */
+    public function incrementReopenedCount(Ticket $ticket): Ticket;
+
+    /**
+     * Resolved/responded tickets whose report metrics are still NULL
+     * (reports:backfill), paged by id so filling them mid-iteration is safe.
+     *
+     * @param  callable(Collection<int, Ticket>): void  $callback
+     */
+    public function chunkMissingMetrics(int $size, callable $callback): void;
+
+    public function updateMetricsById(int $ticketId, ?int $firstResponseMinutes, ?int $resolutionMinutes, ?bool $slaMet): void;
+
+    /**
+     * Sets reopened_count from the activity trail (ticket.reopened, or a
+     * status.changed resolved → open). Returns the number of rows changed.
+     */
+    public function recountReopensFromActivity(): int;
 
     /**
      * Updates last_reply_at (every reply) and first_response_at (the first
