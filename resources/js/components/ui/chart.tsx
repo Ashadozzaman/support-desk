@@ -1,6 +1,6 @@
-import * as React from 'react';
-import * as RechartsPrimitive from 'recharts';
-import { cn } from '@/lib/utils';
+import * as React from "react";
+import * as RechartsPrimitive from "recharts";
+import { cn } from "@/lib/utils";
 
 /**
  * A deliberately small subset of shadcn/ui's chart component — just the
@@ -15,8 +15,10 @@ function ChartContainer({
     className,
     children,
     ...props
-}: React.ComponentProps<'div'> & {
-    children: React.ComponentProps<typeof RechartsPrimitive.ResponsiveContainer>['children'];
+}: React.ComponentProps<"div"> & {
+    children: React.ComponentProps<
+        typeof RechartsPrimitive.ResponsiveContainer
+    >["children"];
 }) {
     return (
         <div
@@ -27,35 +29,75 @@ function ChartContainer({
             )}
             {...props}
         >
-            <RechartsPrimitive.ResponsiveContainer>{children}</RechartsPrimitive.ResponsiveContainer>
+            <RechartsPrimitive.ResponsiveContainer>
+                {children}
+            </RechartsPrimitive.ResponsiveContainer>
         </div>
     );
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
 
+/**
+ * One series: "label / value" (valueLabel names it). Several series (e.g.
+ * created vs resolved): one row per series with a color swatch beside its
+ * name — the swatch carries identity, the text stays in text ink.
+ */
 function ChartTooltipContent({
     active,
     payload,
     label,
     valueLabel,
+    formatValue,
 }: {
     active?: boolean;
-    payload?: ReadonlyArray<{ value?: number | string; payload?: Record<string, unknown> }>;
+    payload?: ReadonlyArray<{
+        value?: number | string;
+        name?: string;
+        color?: string;
+        payload?: Record<string, unknown>;
+    }>;
     label?: string;
     valueLabel?: string;
+    formatValue?: (value: number | string | undefined) => string;
 }) {
     if (!active || !payload?.length) {
         return null;
     }
 
+    const format =
+        formatValue ??
+        ((value: number | string | undefined) => String(value ?? ""));
+
     return (
         <div className="bg-background grid min-w-32 gap-1 rounded-lg border px-3 py-2 text-xs shadow-md">
             <p className="font-medium">{label}</p>
-            <p className="text-muted-foreground flex items-center justify-between gap-2">
-                <span>{valueLabel ?? 'Count'}</span>
-                <span className="text-foreground font-mono font-medium">{payload[0].value}</span>
-            </p>
+            {payload.length === 1 ? (
+                <p className="text-muted-foreground flex items-center justify-between gap-2">
+                    <span>{valueLabel ?? "Count"}</span>
+                    <span className="text-foreground font-mono font-medium">
+                        {format(payload[0].value)}
+                    </span>
+                </p>
+            ) : (
+                payload.map((item) => (
+                    <p
+                        key={item.name}
+                        className="text-muted-foreground flex items-center justify-between gap-3"
+                    >
+                        <span className="flex items-center gap-1.5">
+                            <span
+                                className="size-2.5 rounded-sm"
+                                style={{ backgroundColor: item.color }}
+                            />
+                            {item.name}
+                        </span>
+                        <span className="text-foreground font-mono font-medium">
+                            {format(item.value)}
+                        </span>
+                    </p>
+                ))
+            )}
         </div>
     );
 }

@@ -15,6 +15,7 @@ use App\Policies\BusinessHourPolicy;
 use App\Policies\HolidayPolicy;
 use App\Policies\ImportPolicy;
 use App\Policies\ReplyPolicy;
+use App\Policies\ReportPolicy;
 use App\Policies\SlaPolicyPolicy;
 use App\Policies\TicketPolicy;
 use App\Policies\UserPolicy;
@@ -87,6 +88,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(BusinessHour::class, BusinessHourPolicy::class);
         Gate::policy(Holiday::class, HolidayPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
+
+        Gate::define('viewReports', [ReportPolicy::class, 'viewAny']);
+        Gate::define('viewReportTab', [ReportPolicy::class, 'viewTab']);
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Contracts\Repositories\ReportRepositoryInterface;
 use App\DTOs\ReportFilterData;
 use App\DTOs\ReportStatsData;
 use App\Enums\Permission;
+use App\Enums\ReportTab;
 use App\Enums\TicketPriority;
 use App\Models\User;
 use App\Support\Percentile;
@@ -44,6 +45,23 @@ class ReportService
     private const AGING_CACHE_SECONDS = 60;
 
     public function __construct(private readonly ReportRepositoryInterface $reports) {}
+
+    /**
+     * The Reports page computes only the tab being viewed.
+     *
+     * @return array<string, mixed>|list<array<string, mixed>>
+     */
+    public function forTab(ReportTab $tab, User $viewer, ReportFilterData $filters): array
+    {
+        return match ($tab) {
+            ReportTab::Overview => $this->overview($filters),
+            ReportTab::Sla => $this->slaCompliance($filters),
+            ReportTab::ResponseResolution => $this->responseResolution($filters),
+            ReportTab::Agents => $this->agentPerformance($viewer, $filters),
+            ReportTab::Aging => $this->aging($filters),
+            ReportTab::Categories => $this->categories($filters),
+        };
+    }
 
     /**
      * Created vs resolved per bucket, the backlog trend (nightly

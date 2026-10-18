@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\ReportFilterData;
+use App\Enums\Permission;
 use App\Enums\ReportGranularity;
+use App\Enums\ReportTab;
 use App\Enums\TicketPriority;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
@@ -39,6 +41,7 @@ class ReportFilterRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'tab' => ['nullable', Rule::enum(ReportTab::class)],
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
             'granularity' => ['nullable', Rule::enum(ReportGranularity::class)],
@@ -80,6 +83,40 @@ class ReportFilterRequest extends FormRequest
             categoryId: $this->filled('category_id') ? $this->integer('category_id') : null,
             agentId: $this->filled('agent_id') ? $this->integer('agent_id') : null,
         );
+    }
+
+    /**
+     * Default tab: Overview for admins, the agent's own row otherwise.
+     */
+    public function tab(): ReportTab
+    {
+        return $this->enum('tab', ReportTab::class)
+            ?? ($this->user()?->can(Permission::ReportsView->value) ? ReportTab::Overview : ReportTab::Agents);
+    }
+
+    /**
+     * The effective (defaulted) filters, echoed back so the page's inputs
+     * show what the numbers are actually for.
+     *
+     * @return array{from: string, to: string, granularity: string, priority: ?string, category_id: ?int, agent_id: ?int}
+     */
+    public function effectiveFilters(): array
+    {
+        $data = $this->toData();
+
+        return [
+            'from' => $data->from->toDateString(),
+            'to' => $data->to->toDateString(),
+            'granularity' => $data->granularity->value,
+            'priority' => $data->priority?->value,
+            'category_id' => $data->categoryId,
+            'agent_id' => $data->agentId,
+        ];
+    }
+
+    public function today(): string
+    {
+        return CarbonImmutable::now(config('support.sla.timezone'))->toDateString();
     }
 
     /**

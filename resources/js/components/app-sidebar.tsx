@@ -1,5 +1,14 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, Clock, FolderGit2, LayoutGrid, TicketIcon, UploadIcon, UsersIcon } from 'lucide-react';
+import {
+    BarChart3Icon,
+    BookOpen,
+    Clock,
+    FolderGit2,
+    LayoutGrid,
+    TicketIcon,
+    UploadIcon,
+    UsersIcon,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -18,6 +27,7 @@ import { dashboard } from '@/routes';
 import { index as agentsIndex } from '@/routes/admin/agents';
 import { index as businessHoursIndex } from '@/routes/admin/business-hours';
 import { index as importsIndex } from '@/routes/admin/imports';
+import { index as reportsIndex } from '@/routes/reports';
 import { index as slaPoliciesIndex } from '@/routes/admin/sla-policies';
 import { index as ticketsIndex } from '@/routes/tickets';
 import type { NavItem } from '@/types';
@@ -53,20 +63,54 @@ export function AppSidebar() {
     const canManageBusinessHours = useCan('business-hours.manage');
     const canManageImports = useCan('imports.manage');
     const canManageUsers = useCan('users.manage');
+    const canViewReports = useCan('reports.view') || useCan('reports.view-own');
 
     const mainNavItems: NavItem[] = [
         ...baseNavItems,
+        ...(canViewReports
+            ? [
+                  {
+                      title: 'Reports',
+                      href: reportsIndex(),
+                      icon: BarChart3Icon,
+                  } satisfies NavItem,
+              ]
+            : []),
         ...(canManageUsers
-            ? [{ title: 'Agents', href: agentsIndex(), icon: UsersIcon } satisfies NavItem]
+            ? [
+                  {
+                      title: 'Agents',
+                      href: agentsIndex(),
+                      icon: UsersIcon,
+                  } satisfies NavItem,
+              ]
             : []),
         ...(canManageSla
-            ? [{ title: 'SLA Policies', href: slaPoliciesIndex(), icon: Clock } satisfies NavItem]
+            ? [
+                  {
+                      title: 'SLA Policies',
+                      href: slaPoliciesIndex(),
+                      icon: Clock,
+                  } satisfies NavItem,
+              ]
             : []),
         ...(canManageBusinessHours
-            ? [{ title: 'Business Hours', href: businessHoursIndex(), icon: Clock } satisfies NavItem]
+            ? [
+                  {
+                      title: 'Business Hours',
+                      href: businessHoursIndex(),
+                      icon: Clock,
+                  } satisfies NavItem,
+              ]
             : []),
         ...(canManageImports
-            ? [{ title: 'CSV Imports', href: importsIndex(), icon: UploadIcon } satisfies NavItem]
+            ? [
+                  {
+                      title: 'CSV Imports',
+                      href: importsIndex(),
+                      icon: UploadIcon,
+                  } satisfies NavItem,
+              ]
             : []),
     ];
 
