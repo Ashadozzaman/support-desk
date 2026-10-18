@@ -41,6 +41,14 @@ test('an admin can upload a csv and the import job is dispatched after commit', 
     Queue::assertPushed(ProcessTicketImportJob::class, fn (ProcessTicketImportJob $job) => $job->importId === $import->id);
 });
 
+test('an admin can view the imports index and create pages', function () {
+    $admin = controllerAdmin();
+    Import::factory()->create(['user_id' => $admin->id]);
+
+    $this->actingAs($admin)->get(route('admin.imports.index'))->assertOk();
+    $this->actingAs($admin)->get(route('admin.imports.create'))->assertOk();
+});
+
 test('an agent cannot access the imports admin pages', function () {
     $agent = User::factory()->create();
     $agent->assignRole(RoleEnum::Agent->value);

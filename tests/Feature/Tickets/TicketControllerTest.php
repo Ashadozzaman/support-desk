@@ -16,6 +16,22 @@ beforeEach(function () {
     $this->seed(RolesAndPermissionsSeeder::class);
 });
 
+test('a customer can view the create ticket page', function () {
+    $customer = User::factory()->create();
+    $customer->assignRole(RoleEnum::Customer->value);
+    Category::factory()->count(3)->create();
+
+    $this->actingAs($customer)->get(route('tickets.create'))->assertOk();
+});
+
+test('an agent can view the edit page for a ticket assigned to them', function () {
+    $agent = User::factory()->create();
+    $agent->assignRole(RoleEnum::Agent->value);
+    $ticket = Ticket::factory()->create(['assigned_agent_id' => $agent->id]);
+
+    $this->actingAs($agent)->get(route('tickets.edit', $ticket->ticket_number))->assertOk();
+});
+
 test('a customer can create a ticket and receives a ticket number', function () {
     $customer = User::factory()->create();
     $customer->assignRole(RoleEnum::Customer->value);

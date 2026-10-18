@@ -19,7 +19,9 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
     Route::get('imports', [ImportController::class, 'index'])->name('imports.index');
     Route::get('imports/create', [ImportController::class, 'create'])->name('imports.create');
     Route::get('imports/sample', [ImportController::class, 'sample'])->name('imports.sample');
-    Route::post('imports', [ImportController::class, 'store'])->name('imports.store');
+    Route::post('imports', [ImportController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('imports.store');
     Route::get('imports/{import}', [ImportController::class, 'show'])->name('imports.show');
     Route::get('imports/{import}/errors', [ImportController::class, 'errors'])->name('imports.errors');
 });
