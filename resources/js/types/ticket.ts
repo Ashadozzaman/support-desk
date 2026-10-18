@@ -22,7 +22,12 @@ export const TICKET_PRIORITY_LABELS: Record<TicketPriorityValue, string> = {
     critical: 'Critical',
 };
 
-export type SlaStateValue = 'within' | 'approaching' | 'breached' | 'met' | 'met_late';
+export type SlaStateValue =
+    | 'within'
+    | 'approaching'
+    | 'breached'
+    | 'met'
+    | 'met_late';
 
 export const SLA_STATE_LABELS: Record<SlaStateValue, string> = {
     within: 'Within SLA',
@@ -32,7 +37,11 @@ export const SLA_STATE_LABELS: Record<SlaStateValue, string> = {
     met_late: 'SLA met late',
 };
 
-const ACTIVE_STATUSES: TicketStatusValue[] = ['open', 'in_progress', 'waiting_for_customer'];
+const ACTIVE_STATUSES: TicketStatusValue[] = [
+    'open',
+    'in_progress',
+    'waiting_for_customer',
+];
 
 export function getSlaState(ticket: {
     status: TicketStatusValue;
@@ -54,7 +63,10 @@ export function getSlaState(ticket: {
         return 'breached';
     }
 
-    if (ticket.sla_warning_at !== null && new Date(ticket.sla_warning_at).getTime() <= now) {
+    if (
+        ticket.sla_warning_at !== null &&
+        new Date(ticket.sla_warning_at).getTime() <= now
+    ) {
         return 'approaching';
     }
 
@@ -115,6 +127,8 @@ export type Ticket = {
     sla_met: boolean | null;
     created_at: string;
     updated_at: string;
+    /** Statuses this ticket may move to; empty unless the viewer may change status. */
+    allowed_statuses: TicketStatusValue[];
     can: TicketAbilities;
 };
 

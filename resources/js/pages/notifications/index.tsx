@@ -1,6 +1,7 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { BellOff } from 'lucide-react';
 import { EmptyState } from '@/components/data/EmptyState';
+import { NotificationLink } from '@/components/feedback/NotificationLink';
 import { Pagination } from '@/components/data/Pagination';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
@@ -8,7 +9,11 @@ import { index, read, readAll } from '@/routes/notifications';
 import type { Paginated } from '@/types/pagination';
 import type { AppNotification } from '@/types/notification';
 
-export default function NotificationsIndex({ items }: { items: Paginated<AppNotification> }) {
+export default function NotificationsIndex({
+    items,
+}: {
+    items: Paginated<AppNotification>;
+}) {
     function markAllRead() {
         router.post(readAll().url, {}, { preserveScroll: true });
     }
@@ -30,23 +35,38 @@ export default function NotificationsIndex({ items }: { items: Paginated<AppNoti
                 </div>
 
                 {items.data.length === 0 ? (
-                    <EmptyState icon={BellOff} title="No notifications" description="You're all caught up." />
+                    <EmptyState
+                        icon={BellOff}
+                        title="No notifications"
+                        description="You're all caught up."
+                    />
                 ) : (
                     <>
                         <div className="divide-y rounded-lg border">
                             {items.data.map((notification) => (
-                                <div key={notification.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                                    <Link
-                                        href={notification.data.url}
+                                <div
+                                    key={notification.id}
+                                    className="flex items-center justify-between gap-4 px-4 py-3"
+                                >
+                                    <NotificationLink
+                                        notification={notification}
                                         className={`text-sm ${notification.read_at === null ? 'font-medium' : 'text-muted-foreground'}`}
                                     >
                                         {notification.data.message}
-                                        <span className="text-muted-foreground block text-xs">
-                                            {new Date(notification.created_at).toLocaleString()}
+                                        <span className="block text-xs text-muted-foreground">
+                                            {new Date(
+                                                notification.created_at,
+                                            ).toLocaleString()}
                                         </span>
-                                    </Link>
+                                    </NotificationLink>
                                     {notification.read_at === null && (
-                                        <Button variant="ghost" size="sm" onClick={() => markOneRead(notification.id)}>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                                markOneRead(notification.id)
+                                            }
+                                        >
                                             Mark read
                                         </Button>
                                     )}

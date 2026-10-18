@@ -33,4 +33,12 @@ class ReportPolicy
 
         return $tab === ReportTab::Agents && $user->can(Permission::ReportsViewOwn->value);
     }
+
+    /**
+     * CSV exports (summary and ticket-level) are admin-only.
+     */
+    public function export(User $user): bool
+    {
+        return $user->can(Permission::ReportsExport->value);
+    }
 }

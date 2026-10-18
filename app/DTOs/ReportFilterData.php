@@ -55,6 +55,42 @@ readonly class ReportFilterData
     }
 
     /**
+     * For storing with a queued export (report_exports.filters).
+     *
+     * @return array{from: string, to: string, granularity: string, priority: ?string, category_id: ?int, agent_id: ?int}
+     */
+    public function toArray(): array
+    {
+        return [
+            'from' => $this->from->toDateString(),
+            'to' => $this->to->toDateString(),
+            'granularity' => $this->granularity->value,
+            'priority' => $this->priority?->value,
+            'category_id' => $this->categoryId,
+            'agent_id' => $this->agentId,
+        ];
+    }
+
+    /**
+     * Inverse of toArray(); dates are business-timezone calendar days.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function fromArray(array $data): self
+    {
+        $timezone = config('support.sla.timezone');
+
+        return new self(
+            from: CarbonImmutable::parse((string) $data['from'], $timezone)->startOfDay(),
+            to: CarbonImmutable::parse((string) $data['to'], $timezone)->startOfDay(),
+            granularity: ReportGranularity::from((string) ($data['granularity'] ?? ReportGranularity::Day->value)),
+            priority: isset($data['priority']) ? TicketPriority::from((string) $data['priority']) : null,
+            categoryId: isset($data['category_id']) ? (int) $data['category_id'] : null,
+            agentId: isset($data['agent_id']) ? (int) $data['agent_id'] : null,
+        );
+    }
+
+    /**
      * Stable cache-key fragment for these filters.
      */
     public function cacheKey(): string

@@ -8,6 +8,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
@@ -50,4 +51,28 @@ test('a customer cannot change ticket status', function () {
     $this->actingAs($customer)
         ->patch(route('tickets.change-status', $ticket->ticket_number), ['status' => TicketStatus::InProgress->value])
         ->assertForbidden();
+});
+
+test('the ticket page offers staff exactly the statuses the ticket can move to', function () {
+    $agent = User::factory()->create();
+    $agent->assignRole(RoleEnum::Agent->value);
+    $ticket = Ticket::factory()->create(['status' => TicketStatus::InProgress->value, 'assigned_agent_id' => $agent->id]);
+
+    $this->actingAs($agent)
+        ->get(route('tickets.show', $ticket->ticket_number))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('ticket.data.can.change_status', true)
+            ->where('ticket.data.allowed_statuses', [TicketStatus::WaitingForCustomer->value, TicketStatus::Resolved->value]));
+});
+
+test('someone who may not change status is offered no statuses', function () {
+    $customer = User::factory()->create();
+    $customer->assignRole(RoleEnum::Customer->value);
+    $ticket = Ticket::factory()->create(['created_by' => $customer->id, 'status' => TicketStatus::Open->value]);
+
+    $this->actingAs($customer)
+        ->get(route('tickets.show', $ticket->ticket_number))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('ticket.data.can.change_status', false)
+            ->where('ticket.data.allowed_statuses', []));
 });

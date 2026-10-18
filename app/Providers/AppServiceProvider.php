@@ -6,6 +6,7 @@ use App\Models\Attachment;
 use App\Models\BusinessHour;
 use App\Models\Holiday;
 use App\Models\Import;
+use App\Models\ReportExport;
 use App\Models\SlaPolicy;
 use App\Models\Ticket;
 use App\Models\TicketReply;
@@ -15,6 +16,7 @@ use App\Policies\BusinessHourPolicy;
 use App\Policies\HolidayPolicy;
 use App\Policies\ImportPolicy;
 use App\Policies\ReplyPolicy;
+use App\Policies\ReportExportPolicy;
 use App\Policies\ReportPolicy;
 use App\Policies\SlaPolicyPolicy;
 use App\Policies\TicketPolicy;
@@ -91,6 +93,8 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('viewReports', [ReportPolicy::class, 'viewAny']);
         Gate::define('viewReportTab', [ReportPolicy::class, 'viewTab']);
+        Gate::define('exportReports', [ReportPolicy::class, 'export']);
+        Gate::policy(ReportExport::class, ReportExportPolicy::class);
     }
 
     /**
@@ -105,7 +109,7 @@ class AppServiceProvider extends ServiceProvider
         // Overrides the framework default "queue" dev command, which only
         // listens on the "default" queue — our sla/notifications/broadcasts
         // jobs would otherwise never run under `composer dev`.
-        DevCommands::artisan('queue:listen --queue=sla,default,notifications,broadcasts --tries=3', 'queue');
+        DevCommands::artisan('queue:listen --queue=sla,default,notifications,broadcasts,exports --tries=3', 'queue');
         DevCommands::artisan('schedule:work', 'schedule');
         DevCommands::artisan('reverb:start --debug', 'reverb');
     }

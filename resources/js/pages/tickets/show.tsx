@@ -6,6 +6,7 @@ import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
 import { ReplyForm } from '@/components/reply/ReplyForm';
 import { ReplyThread } from '@/components/reply/ReplyThread';
 import { AssignAgentDialog } from '@/components/ticket/AssignAgentDialog';
+import { ChangeStatusButtons } from '@/components/ticket/ChangeStatusButtons';
 import { ClaimTicketButton } from '@/components/ticket/ClaimTicketButton';
 import { PriorityBadge } from '@/components/ticket/PriorityBadge';
 import { SlaBadge } from '@/components/ticket/SlaBadge';
@@ -38,16 +39,26 @@ export default function TicketsShow({
             <Head title={t.ticket_number} />
 
             <div className="flex flex-1 flex-col gap-4 p-4">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                        <p className="text-muted-foreground font-mono text-sm">{t.ticket_number}</p>
+                        <p className="font-mono text-sm text-muted-foreground">
+                            {t.ticket_number}
+                        </p>
                         <h1 className="text-xl font-semibold">{t.subject}</h1>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <PriorityBadge priority={t.priority} />
                         <StatusBadge status={t.status} />
                         <SlaBadge ticket={t} />
-                        {can.claim && <ClaimTicketButton ticketNumber={t.ticket_number} />}
+                        {can.claim && (
+                            <ClaimTicketButton ticketNumber={t.ticket_number} />
+                        )}
+                        {t.can.change_status && (
+                            <ChangeStatusButtons
+                                ticketNumber={t.ticket_number}
+                                allowed={t.allowed_statuses}
+                            />
+                        )}
                         {can.assign && (
                             <AssignAgentDialog
                                 ticketNumber={t.ticket_number}
@@ -80,8 +91,14 @@ export default function TicketsShow({
                         <CardTitle>Details</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-4 sm:grid-cols-2">
-                        <Detail label="Category" value={t.category?.name ?? 'Uncategorised'} />
-                        <Detail label="Assigned to" value={t.assigned_agent?.name ?? 'Unassigned'} />
+                        <Detail
+                            label="Category"
+                            value={t.category?.name ?? 'Uncategorised'}
+                        />
+                        <Detail
+                            label="Assigned to"
+                            value={t.assigned_agent?.name ?? 'Unassigned'}
+                        />
                         <Detail label="Created by" value={t.creator.name} />
                         <Detail
                             label="Created"
@@ -89,14 +106,23 @@ export default function TicketsShow({
                         />
                         <Detail
                             label="SLA due"
-                            value={t.sla_due_at ? new Date(t.sla_due_at).toLocaleString() : 'No SLA'}
+                            value={
+                                t.sla_due_at
+                                    ? new Date(t.sla_due_at).toLocaleString()
+                                    : 'No SLA'
+                            }
                         />
                     </CardContent>
                 </Card>
 
                 <ReplyThread replies={replies.data} />
 
-                {(can.reply || can.note) && <ReplyForm ticketNumber={t.ticket_number} canNote={can.note} />}
+                {(can.reply || can.note) && (
+                    <ReplyForm
+                        ticketNumber={t.ticket_number}
+                        canNote={can.note}
+                    />
+                )}
 
                 <ActivityTimeline activities={activities.data} />
             </div>
@@ -107,7 +133,7 @@ export default function TicketsShow({
 function Detail({ label, value }: { label: string; value: string }) {
     return (
         <div>
-            <p className="text-muted-foreground text-xs">{label}</p>
+            <p className="text-xs text-muted-foreground">{label}</p>
             <p className="text-sm font-medium">{value}</p>
         </div>
     );
@@ -117,6 +143,9 @@ TicketsShow.layout = (props: { ticket: { data: Ticket } }) => ({
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
         { title: 'Tickets', href: index() },
-        { title: props.ticket.data.ticket_number, href: show(props.ticket.data.ticket_number) },
+        {
+            title: props.ticket.data.ticket_number,
+            href: show(props.ticket.data.ticket_number),
+        },
     ],
 });

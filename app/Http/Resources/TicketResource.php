@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Enums\TicketStatus;
 use App\Models\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -50,6 +51,11 @@ class TicketResource extends JsonResource
             'sla_met' => $this->sla_met,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            // Only for someone allowed to change status; the server still
+            // validates the transition (InvalidStatusTransitionException → 422).
+            'allowed_statuses' => ($user?->can('changeStatus', $this->resource) ?? false)
+                ? array_map(fn (TicketStatus $status) => $status->value, $this->status->allowedTargets())
+                : [],
             'can' => [
                 'update' => $user?->can('update', $this->resource) ?? false,
                 'change_status' => $user?->can('changeStatus', $this->resource) ?? false,

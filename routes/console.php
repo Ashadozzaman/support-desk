@@ -17,6 +17,7 @@ Schedule::command('dashboard:warm-cache')->everyThirtySeconds()->withoutOverlapp
 Schedule::command('reports:aggregate')->everyFifteenMinutes()->withoutOverlapping(10)->onOneServer();
 Schedule::command('reports:aggregate --yesterday')->dailyAt('00:30')->timezone(config('support.sla.timezone'))->withoutOverlapping(30)->onOneServer();
 Schedule::command('reports:snapshot')->dailyAt('23:55')->timezone(config('support.sla.timezone'))->withoutOverlapping(10)->onOneServer();
+Schedule::command('reports:weekly-digest')->weeklyOn(1, '08:00')->timezone(config('support.sla.timezone'))->withoutOverlapping(10)->onOneServer();
 Schedule::command('queue:prune-batches --hours=48')->daily();
 Schedule::command('queue:prune-failed --hours=168')->daily();
 Schedule::command('model:prune')->daily();

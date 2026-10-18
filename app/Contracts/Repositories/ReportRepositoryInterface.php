@@ -6,8 +6,10 @@ namespace App\Contracts\Repositories;
 
 use App\DTOs\ReportFilterData;
 use App\DTOs\ReportStatsData;
+use App\Models\Ticket;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\LazyCollection;
 
 interface ReportRepositoryInterface
 {
@@ -89,4 +91,17 @@ interface ReportRepositoryInterface
      * @return Collection<int, string> name keyed by id
      */
     public function categoryNames(array $categoryIds): Collection;
+
+    /**
+     * Tickets created in the filter window (ticket export).
+     */
+    public function countTicketsForExport(ReportFilterData $filters): int;
+
+    /**
+     * Tickets created in the filter window with category / assignee names,
+     * read in id-ordered chunks so memory stays flat however many there are.
+     *
+     * @return LazyCollection<int, Ticket>
+     */
+    public function ticketsForExport(ReportFilterData $filters): LazyCollection;
 }

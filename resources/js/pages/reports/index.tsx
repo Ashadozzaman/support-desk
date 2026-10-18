@@ -2,6 +2,7 @@ import { Head, usePage } from '@inertiajs/react';
 import { ReportFilterCard } from '@/components/cards/ReportFilterCard';
 import { AgentsReportView } from '@/components/report/AgentsReportView';
 import { AgingReportView } from '@/components/report/AgingReportView';
+import { ExportButton } from '@/components/report/ExportButton';
 import { CategoriesReportView } from '@/components/report/CategoriesReportView';
 import { OverviewReportView } from '@/components/report/OverviewReportView';
 import { ReportTabs } from '@/components/report/ReportTabs';
@@ -68,12 +69,15 @@ export default function ReportsIndex(props: Props) {
             <Head title="Reports" />
 
             <div className="flex flex-1 flex-col gap-4 p-4">
-                <div>
-                    <h1 className="text-lg font-semibold">Reports</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Counts and averages are refreshed every 15 minutes. Days
-                        are in the business timezone.
-                    </p>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-lg font-semibold">Reports</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Counts and averages are refreshed every 15 minutes.
+                            Days are in the business timezone.
+                        </p>
+                    </div>
+                    <ExportButton tab={props.tab} filters={props.filters} />
                 </div>
 
                 <ReportTabs active={props.tab} filters={props.filters} />

@@ -29,18 +29,28 @@ export function NotificationBell() {
         router.post(readAll().url, {}, { preserveScroll: true });
     }
 
+    // A download link is a file, not an Inertia page — open it with a
+    // normal browser navigation so the browser saves it.
+    function go(notification: AppNotification) {
+        if (notification.data.download) {
+            window.location.assign(notification.data.url);
+        } else {
+            router.visit(notification.data.url);
+        }
+    }
+
     function openNotification(notification: AppNotification) {
         if (notification.read_at === null) {
             router.post(
                 read(notification.id).url,
                 {},
-                { preserveScroll: true, onFinish: () => router.visit(notification.data.url) },
+                { preserveScroll: true, onFinish: () => go(notification) },
             );
 
             return;
         }
 
-        router.visit(notification.data.url);
+        go(notification);
     }
 
     return (
@@ -62,18 +72,30 @@ export function NotificationBell() {
                 <DropdownMenuLabel className="flex items-center justify-between">
                     <span>Notifications</span>
                     {unreadCount > 0 && (
-                        <button type="button" onClick={markAllRead} className="text-muted-foreground text-xs font-normal hover:underline">
+                        <button
+                            type="button"
+                            onClick={markAllRead}
+                            className="text-xs font-normal text-muted-foreground hover:underline"
+                        >
                             Mark all read
                         </button>
                     )}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {recent.length === 0 && <p className="text-muted-foreground px-2 py-4 text-center text-sm">No notifications yet.</p>}
+                {recent.length === 0 && (
+                    <p className="px-2 py-4 text-center text-sm text-muted-foreground">
+                        No notifications yet.
+                    </p>
+                )}
                 {recent.map((notification) => (
                     <DropdownMenuItem
                         key={notification.id}
                         onClick={() => openNotification(notification)}
-                        className={notification.read_at === null ? 'font-medium' : 'text-muted-foreground'}
+                        className={
+                            notification.read_at === null
+                                ? 'font-medium'
+                                : 'text-muted-foreground'
+                        }
                     >
                         {notification.data.message}
                     </DropdownMenuItem>

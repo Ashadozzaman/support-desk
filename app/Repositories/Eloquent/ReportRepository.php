@@ -18,6 +18,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\LazyCollection;
 use InvalidArgumentException;
 
 class ReportRepository implements ReportRepositoryInterface
@@ -243,6 +244,33 @@ class ReportRepository implements ReportRepositoryInterface
     public function categoryNames(array $categoryIds): Collection
     {
         return Category::query()->whereKey($categoryIds)->pluck('name', 'id');
+    }
+
+    public function countTicketsForExport(ReportFilterData $filters): int
+    {
+        $query = Ticket::query()->toBase()
+            ->where('created_at', '>=', $filters->fromUtc())
+            ->where('created_at', '<', $filters->toUtc());
+
+        $this->applyTicketFilters($query, $filters);
+
+        return $query->count();
+    }
+
+    public function ticketsForExport(ReportFilterData $filters): LazyCollection
+    {
+        $query = Ticket::query()
+            ->select([
+                'id', 'ticket_number', 'status', 'priority', 'category_id', 'assigned_agent_id', 'created_at',
+                'first_response_minutes', 'resolved_at', 'resolution_minutes', 'sla_met', 'reopened_count',
+            ])
+            ->with(['category:id,name', 'assignedAgent:id,name'])
+            ->where('created_at', '>=', $filters->fromUtc())
+            ->where('created_at', '<', $filters->toUtc());
+
+        $this->applyTicketFilters($query->getQuery(), $filters);
+
+        return $query->lazyById(2000);
     }
 
     /**

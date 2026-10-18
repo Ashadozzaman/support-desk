@@ -4,6 +4,8 @@ export type AppNotification = {
         ticket_number?: string;
         message: string;
         url: string;
+        /** The url is a file download (e.g. a report export), not a page. */
+        download?: boolean;
     };
     read_at: string | null;
     created_at: string;

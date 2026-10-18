@@ -46,3 +46,11 @@ test('report rollups are scheduled: today every 15 minutes, yesterday and the sn
         ->and($snapshot->expression)->toBe('55 23 * * *')
         ->and($snapshot->timezone)->toBe(config('support.sla.timezone'));
 });
+
+test('the weekly report digest is scheduled Mondays 08:00 business time', function () {
+    $event = collect(app(Schedule::class)->events())->first(fn ($e) => str_contains($e->command, 'reports:weekly-digest'));
+
+    expect($event->expression)->toBe('0 8 * * 1')
+        ->and($event->timezone)->toBe(config('support.sla.timezone'))
+        ->and($event->onOneServer)->toBeTrue();
+});

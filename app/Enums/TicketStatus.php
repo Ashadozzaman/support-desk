@@ -27,6 +27,17 @@ enum TicketStatus: string
         };
     }
 
+    /**
+     * Every status this one may move to — derived from canTransitionTo(), so
+     * the UI's choices and the server's validation can't disagree.
+     *
+     * @return list<self>
+     */
+    public function allowedTargets(): array
+    {
+        return array_values(array_filter(self::cases(), fn (self $target) => $this->canTransitionTo($target)));
+    }
+
     public function label(): string
     {
         return match ($this) {

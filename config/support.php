@@ -78,4 +78,18 @@ return [
         'stuck_after_days' => (int) env('SUPPORT_DASHBOARD_STUCK_AFTER_DAYS', 3),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Reports
+    |--------------------------------------------------------------------------
+    |
+    | Ticket exports up to export_sync_limit rows stream straight to the
+    | browser; larger ones are generated on the `exports` queue and kept for
+    | export_ttl_days before model:prune deletes them.
+    */
+    'reports' => [
+        'export_sync_limit' => (int) env('SUPPORT_REPORTS_EXPORT_SYNC_LIMIT', 50000),
+        'export_ttl_days' => (int) env('SUPPORT_REPORTS_EXPORT_TTL_DAYS', 7),
+    ],
+
 ];

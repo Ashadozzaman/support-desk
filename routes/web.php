@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReportExportController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -14,6 +15,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('reports', [ReportController::class, 'index'])
         ->middleware('permission:reports.view|reports.view-own')
         ->name('reports.index');
+
+    Route::middleware(['permission:reports.export', 'throttle:10,1'])->prefix('reports/export')->name('reports.export.')->group(function () {
+        Route::get('summary', [ReportExportController::class, 'summary'])->name('summary');
+        Route::get('tickets', [ReportExportController::class, 'tickets'])->name('tickets');
+    });
+
+    // Signed + expiring link from the "export ready" notification; the owner
+    // check is ReportExportPolicy::download.
+    Route::get('reports/exports/{export}/download', [ReportExportController::class, 'download'])
+        ->middleware('signed')
+        ->name('reports.exports.download');
 });
 
 require __DIR__.'/settings.php';
