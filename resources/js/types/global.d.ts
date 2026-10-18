@@ -1,4 +1,5 @@
 import type { Auth } from '@/types/auth';
+import type { NotificationSummary } from '@/types/notification';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -12,6 +13,7 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
+            notifications: NotificationSummary | null;
             [key: string]: unknown;
         };
     }

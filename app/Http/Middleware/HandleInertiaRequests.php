@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Resources\NotificationResource;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -36,6 +38,7 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        $notifications = app(NotificationService::class);
 
         return [
             ...parent::share($request),
@@ -46,6 +49,13 @@ class HandleInertiaRequests extends Middleware
                 'permissions' => $user?->getAllPermissions()->pluck('name') ?? [],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'notifications' => $user === null ? null : fn () => [
+                'unreadCount' => $notifications->unreadCountFor($user),
+                // A plain array of resources, not ::collection() — a
+                // ResourceCollection JSON-encodes wrapped in a "data" key,
+                // which breaks a prop that is itself a plain list.
+                'recent' => $notifications->recentFor($user)->map(fn ($n) => new NotificationResource($n))->all(),
+            ],
         ];
     }
 }

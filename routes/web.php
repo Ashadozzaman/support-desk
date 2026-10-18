@@ -12,3 +12,4 @@ require __DIR__.'/settings.php';
 require __DIR__.'/tickets.php';
 require __DIR__.'/replies.php';
 require __DIR__.'/admin.php';
+require __DIR__.'/notifications.php';

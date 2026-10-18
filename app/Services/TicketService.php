@@ -9,6 +9,9 @@ use App\DTOs\CreateTicketData;
 use App\DTOs\UpdateTicketData;
 use App\Enums\ActivityEvent;
 use App\Enums\TicketStatus;
+use App\Events\TicketCreated;
+use App\Events\TicketResolved;
+use App\Events\TicketStatusChanged;
 use App\Exceptions\InvalidStatusTransitionException;
 use App\Jobs\AutoAssignTicketJob;
 use App\Models\Category;
@@ -46,6 +49,8 @@ class TicketService
             );
 
             AutoAssignTicketJob::dispatch($ticket->id)->afterCommit();
+
+            DB::afterCommit(fn () => TicketCreated::dispatch($ticket));
 
             return $ticket;
         }, attempts: 3);
@@ -117,16 +122,24 @@ class TicketService
         }
 
         return DB::transaction(function () use ($ticket, $target, $actor) {
-            $old = $ticket->status->value;
+            $from = $ticket->status;
             $updated = $this->tickets->updateStatus($ticket, $target);
 
             $this->activity->log(
                 $updated,
                 ActivityEvent::StatusChanged,
                 $actor,
-                ['status' => $old],
+                ['status' => $from->value],
                 ['status' => $target->value],
             );
+
+            DB::afterCommit(function () use ($updated, $from, $target) {
+                TicketStatusChanged::dispatch($updated, $from, $target);
+
+                if ($target === TicketStatus::Resolved) {
+                    TicketResolved::dispatch($updated);
+                }
+            });
 
             return $updated;
         });

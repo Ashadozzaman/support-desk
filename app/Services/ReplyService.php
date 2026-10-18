@@ -11,6 +11,8 @@ use App\Enums\ActivityEvent;
 use App\Enums\Permission;
 use App\Enums\ReplyType;
 use App\Enums\TicketStatus;
+use App\Events\InternalNoteAdded;
+use App\Events\ReplyAdded;
 use App\Models\Ticket;
 use App\Models\TicketReply;
 use App\Models\User;
@@ -66,6 +68,8 @@ class ReplyService
                 );
             }
 
+            DB::afterCommit(fn () => ReplyAdded::dispatch($ticket, $reply));
+
             return $reply;
         });
     }
@@ -87,6 +91,8 @@ class ReplyService
             }
 
             $this->activity->log($ticket, ActivityEvent::NoteAdded, $actor, [], ['reply_id' => $note->id]);
+
+            DB::afterCommit(fn () => InternalNoteAdded::dispatch($ticket, $note));
 
             return $note;
         });
