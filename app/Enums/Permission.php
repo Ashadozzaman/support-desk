@@ -30,6 +30,9 @@ enum Permission: string
     case BusinessHoursManage = 'business-hours.manage';
     case CategoriesManage = 'categories.manage';
     case UsersManage = 'users.manage';
+    case ReportsView = 'reports.view';
+    case ReportsViewOwn = 'reports.view-own';
+    case ReportsExport = 'reports.export';
 
     /**
      * @return list<string>

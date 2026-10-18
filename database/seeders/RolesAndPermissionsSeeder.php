@@ -33,6 +33,7 @@ class RolesAndPermissionsSeeder extends Seeder
         PermissionEnum::NotesView,
         PermissionEnum::AttachmentsUpload,
         PermissionEnum::DashboardViewOwn,
+        PermissionEnum::ReportsViewOwn,
     ];
 
     /**
