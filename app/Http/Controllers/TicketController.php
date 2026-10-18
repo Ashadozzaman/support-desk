@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\Permission;
 use App\Http\Requests\AssignTicketRequest;
 use App\Http\Requests\StoreTicketRequest;
+use App\Http\Requests\TicketFilterRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Http\Requests\UpdateTicketStatusRequest;
 use App\Http\Resources\ActivityResource;
@@ -33,19 +34,28 @@ class TicketController extends Controller
         private readonly TicketAssignmentService $assignments,
     ) {}
 
-    public function index(Request $request): Response
+    public function index(TicketFilterRequest $request): Response
     {
         $this->authorize('viewAny', Ticket::class);
 
-        $tab = $request->query('tab') === 'resolved' ? 'resolved' : 'active';
-
+        $tab = $request->tab();
         $user = $request->user();
-        $tickets = $this->tickets->paginate($user, $tab);
+        $filters = $request->toData();
+
+        $tickets = $this->tickets->paginate($user, $tab, $filters, $request->perPage());
+
+        $isStaff = $user->can(Permission::TicketsViewAny->value) || $user->can(Permission::TicketsViewQueue->value);
 
         return Inertia::render('tickets/index', [
             'tickets' => TicketListResource::collection($tickets),
             'tab' => $tab,
-            'agents' => $user->can(Permission::TicketsAssign->value) ? $this->assignments->agentOptions() : [],
+            'filters' => $request->only([
+                'ticket_number', 'keyword', 'status', 'priority', 'category_id',
+                'assigned_agent_id', 'created_by', 'created_from', 'created_to', 'sla_state',
+            ]),
+            'categories' => $this->tickets->categoryOptions(),
+            'agents' => $isStaff ? $this->assignments->agentOptions() : [],
+            'customers' => $user->can(Permission::TicketsViewAny->value) ? $this->tickets->customerOptions() : [],
         ]);
     }
 

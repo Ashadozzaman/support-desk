@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Contracts\Repositories;
 
 use App\DTOs\CreateTicketData;
+use App\DTOs\TicketFilterData;
 use App\DTOs\UpdateTicketData;
 use App\Enums\TicketStatus;
 use App\Models\Ticket;
@@ -21,7 +22,7 @@ interface TicketRepositoryInterface
     /**
      * @return LengthAwarePaginator<int, Ticket>
      */
-    public function paginateFor(User $viewer, string $tab): LengthAwarePaginator;
+    public function paginateFor(User $viewer, string $tab, TicketFilterData $filters, int $perPage = 15): LengthAwarePaginator;
 
     public function countActiveForAgent(int $agentId): int;
 

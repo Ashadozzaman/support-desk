@@ -6,8 +6,10 @@ namespace App\Services;
 
 use App\Contracts\Repositories\TicketRepositoryInterface;
 use App\DTOs\CreateTicketData;
+use App\DTOs\TicketFilterData;
 use App\DTOs\UpdateTicketData;
 use App\Enums\ActivityEvent;
+use App\Enums\Role;
 use App\Enums\TicketStatus;
 use App\Events\TicketCreated;
 use App\Events\TicketResolved;
@@ -148,9 +150,9 @@ class TicketService
     /**
      * @return LengthAwarePaginator<int, Ticket>
      */
-    public function paginate(User $viewer, string $tab): LengthAwarePaginator
+    public function paginate(User $viewer, string $tab, TicketFilterData $filters, int $perPage = 15): LengthAwarePaginator
     {
-        return $this->tickets->paginateFor($viewer, $tab);
+        return $this->tickets->paginateFor($viewer, $tab, $filters, $perPage);
     }
 
     /**
@@ -163,5 +165,17 @@ class TicketService
     public function categoryOptions(): Collection
     {
         return Category::query()->active()->orderBy('name')->get(['id', 'name']);
+    }
+
+    /**
+     * Customers for the admin "created by" filter — same precedent as
+     * categoryOptions()/TicketAssignmentService::agentOptions() (direct,
+     * read-only model query; no dedicated UserRepository exists for this).
+     *
+     * @return Collection<int, User>
+     */
+    public function customerOptions(): Collection
+    {
+        return User::role(Role::Customer->value)->orderBy('name')->get(['id', 'name']);
     }
 }

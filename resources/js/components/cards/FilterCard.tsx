@@ -1,9 +1,6 @@
 import type { ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 
-/**
- * Built now, wired to real filters in Step 12 (TicketFilterData / scopeFilter).
- */
 export function FilterCard({ children }: { children: ReactNode }) {
     return (
         <Card>

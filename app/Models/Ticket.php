@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\DTOs\TicketFilterData;
 use App\Enums\SlaState;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
@@ -149,21 +150,40 @@ class Ticket extends Model
     }
 
     /**
-     * Minimal equality filters; FULLTEXT keyword search and SLA-state
-     * predicates are added in Step 12 once TicketFilterData exists.
+     * TicketFilterData → WHERE clauses (ARCHITECTURE.md §12). `ticket_number`
+     * uses a left-anchored LIKE so it stays index-friendly for both an exact
+     * number and a year/prefix search; keyword uses the FULLTEXT index in
+     * boolean mode (LIKE fallback behind `support.search.fulltext` for
+     * engines without FULLTEXT). Callers must apply `visibleTo()` first.
      *
      * @param  Builder<Ticket>  $query
-     * @param  array<string, mixed>  $filters
      * @return Builder<Ticket>
      */
-    public function scopeFilter(Builder $query, array $filters): Builder
+    public function scopeFilter(Builder $query, TicketFilterData $filters): Builder
     {
         return $query
-            ->when($filters['status'] ?? null, fn (Builder $q, $status) => $q->where('status', $status))
-            ->when($filters['priority'] ?? null, fn (Builder $q, $priority) => $q->where('priority', $priority))
-            ->when($filters['category_id'] ?? null, fn (Builder $q, $categoryId) => $q->where('category_id', $categoryId))
-            ->when($filters['assigned_agent_id'] ?? null, fn (Builder $q, $agentId) => $q->where('assigned_agent_id', $agentId))
-            ->when($filters['created_by'] ?? null, fn (Builder $q, $createdBy) => $q->where('created_by', $createdBy));
+            ->when(
+                $filters->ticketNumber,
+                fn (Builder $q, string $number) => $q->where('ticket_number', 'like', $number.'%'),
+            )
+            ->when($filters->keyword, function (Builder $q, string $keyword) {
+                if (config('support.search.fulltext')) {
+                    $q->whereFullText(['subject', 'description'], $keyword, ['mode' => 'boolean']);
+                } else {
+                    $q->where(function (Builder $sub) use ($keyword) {
+                        $sub->where('subject', 'like', "%{$keyword}%")
+                            ->orWhere('description', 'like', "%{$keyword}%");
+                    });
+                }
+            })
+            ->when($filters->status, fn (Builder $q, TicketStatus $status) => $q->where('status', $status->value))
+            ->when($filters->priority, fn (Builder $q, TicketPriority $priority) => $q->where('priority', $priority->value))
+            ->when($filters->categoryId, fn (Builder $q, int $id) => $q->where('category_id', $id))
+            ->when($filters->assignedAgentId, fn (Builder $q, int $id) => $q->where('assigned_agent_id', $id))
+            ->when($filters->createdBy, fn (Builder $q, int $id) => $q->where('created_by', $id))
+            ->when($filters->createdFrom, fn (Builder $q, $from) => $q->where('created_at', '>=', $from))
+            ->when($filters->createdTo, fn (Builder $q, $to) => $q->where('created_at', '<=', $to))
+            ->when($filters->slaState, fn (Builder $q, SlaState $state) => $q->slaState($state));
     }
 
     /**

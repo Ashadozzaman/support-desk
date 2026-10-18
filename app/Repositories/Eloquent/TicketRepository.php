@@ -6,6 +6,7 @@ namespace App\Repositories\Eloquent;
 
 use App\Contracts\Repositories\TicketRepositoryInterface;
 use App\DTOs\CreateTicketData;
+use App\DTOs\TicketFilterData;
 use App\DTOs\UpdateTicketData;
 use App\Enums\TicketStatus;
 use App\Models\Ticket;
@@ -39,11 +40,12 @@ class TicketRepository implements TicketRepositoryInterface
         return Ticket::where('ticket_number', $ticketNumber)->firstOrFail();
     }
 
-    public function paginateFor(User $viewer, string $tab): LengthAwarePaginator
+    public function paginateFor(User $viewer, string $tab, TicketFilterData $filters, int $perPage = 15): LengthAwarePaginator
     {
         return Ticket::query()
             ->visibleTo($viewer)
             ->when($tab === 'resolved', fn ($query) => $query->resolved(), fn ($query) => $query->active())
+            ->filter($filters)
             ->with([
                 'category:id,name',
                 'assignedAgent:id,name',
@@ -54,7 +56,7 @@ class TicketRepository implements TicketRepositoryInterface
                 'assigned_agent_id', 'created_by', 'sla_due_at', 'sla_warning_at', 'sla_met', 'created_at',
             ])
             ->latest()
-            ->paginate(15)
+            ->paginate($perPage)
             ->withQueryString();
     }
 

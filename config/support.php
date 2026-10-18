@@ -43,6 +43,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    |
+    | Keyword search on the ticket list uses MySQL FULLTEXT MATCH ... AGAINST
+    | by default; flip to a LIKE fallback for engines without FULLTEXT
+    | support (ARCHITECTURE.md §12).
+    */
+    'search' => [
+        'fulltext' => (bool) env('SUPPORT_SEARCH_FULLTEXT', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | CSV import
     |--------------------------------------------------------------------------
     */

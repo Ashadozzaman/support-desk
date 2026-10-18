@@ -4,8 +4,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 /**
- * Debounced text input. Not wired to a backend filter yet — keyword
- * search ships in Step 12 (TicketFilterData / scopeFilter).
+ * Debounced text input.
  */
 export function SearchInput({
     value,
