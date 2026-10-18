@@ -10,6 +10,7 @@ import { ClaimTicketButton } from '@/components/ticket/ClaimTicketButton';
 import { PriorityBadge } from '@/components/ticket/PriorityBadge';
 import { SlaBadge } from '@/components/ticket/SlaBadge';
 import { StatusBadge } from '@/components/ticket/StatusBadge';
+import { useTicketChannel } from '@/hooks/use-ticket-channel';
 import { dashboard } from '@/routes';
 import { edit, index, show } from '@/routes/tickets';
 import type { ReplyAbilities, ReplyItem } from '@/types/reply';
@@ -29,6 +30,8 @@ export default function TicketsShow({
     agents: AgentOption[];
 }) {
     const t = ticket.data;
+
+    useTicketChannel(t.ticket_number);
 
     return (
         <>

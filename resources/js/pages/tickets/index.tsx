@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/data/EmptyState';
 import { Pagination } from '@/components/data/Pagination';
 import { TicketTable } from '@/components/ticket/TicketTable';
+import { useStaffQueue } from '@/hooks/use-staff-queue';
 import { dashboard } from '@/routes';
 import { create, index } from '@/routes/tickets';
 import type { Paginated } from '@/types/pagination';
@@ -20,6 +21,8 @@ export default function TicketsIndex({
     tab: Tab;
     agents: AgentOption[];
 }) {
+    useStaffQueue(['tickets']);
+
     const tabs: { value: Tab; label: string }[] = [
         { value: 'active', label: 'Active' },
         { value: 'resolved', label: 'Resolved' },

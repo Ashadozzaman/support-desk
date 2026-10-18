@@ -7,6 +7,7 @@ namespace App\Notifications;
 use App\Models\Ticket;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -36,7 +37,7 @@ class TicketResolved extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return ['mail', 'database', 'broadcast'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -59,5 +60,10 @@ class TicketResolved extends Notification implements ShouldQueue
             'message' => "Ticket {$this->ticket->ticket_number} resolved",
             'url' => route('tickets.show', $this->ticket->ticket_number),
         ];
+    }
+
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return new BroadcastMessage($this->toArray($notifiable));
     }
 }

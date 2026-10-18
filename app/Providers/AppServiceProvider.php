@@ -18,6 +18,7 @@ use App\Policies\SlaPolicyPolicy;
 use App\Policies\TicketPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -41,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configurePolicies();
+        $this->configureDevCommands();
     }
 
     /**
@@ -82,5 +84,22 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(SlaPolicy::class, SlaPolicyPolicy::class);
         Gate::policy(BusinessHour::class, BusinessHourPolicy::class);
         Gate::policy(Holiday::class, HolidayPolicy::class);
+    }
+
+    /**
+     * `composer dev` (→ `php artisan dev`) already runs serve/queue/vite via
+     * Laravel's built-in dev-process registry (QUEUE_SCHEDULER_REALTIME.md
+     * §6 asks for a bespoke `dev:all` script, but this starter kit ships
+     * that registry instead, so escalation/broadcasting are added to it
+     * here rather than duplicating it with `concurrently`).
+     */
+    protected function configureDevCommands(): void
+    {
+        // Overrides the framework default "queue" dev command, which only
+        // listens on the "default" queue — our sla/notifications/broadcasts
+        // jobs would otherwise never run under `composer dev`.
+        DevCommands::artisan('queue:listen --queue=sla,default,notifications,broadcasts --tries=3', 'queue');
+        DevCommands::artisan('schedule:work', 'schedule');
+        DevCommands::artisan('reverb:start --debug', 'reverb');
     }
 }
