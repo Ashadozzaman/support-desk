@@ -16,6 +16,12 @@ use Inertia\Testing\AssertableInertia as Assert;
  */
 uses(DatabaseTruncation::class);
 
+// DatabaseTruncation only truncates *before* each test; clean up after too,
+// so the RefreshDatabase suites that run later don't inherit these rows.
+afterEach(function () {
+    $this->truncateDatabaseTables();
+});
+
 beforeEach(function () {
     $this->seed(RolesAndPermissionsSeeder::class);
 

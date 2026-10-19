@@ -35,13 +35,16 @@ use Carbon\CarbonImmutable;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\DevCommands;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -75,6 +78,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureSlowQueryLog();
         $this->configureHealthChecks();
         $this->configureApi();
+        $this->configureRateLimiting();
     }
 
     /**
@@ -148,6 +152,17 @@ class AppServiceProvider extends ServiceProvider
         Scramble::configure()->withDocumentTransformers(function (OpenApi $openApi): void {
             $openApi->secure(SecurityScheme::http('bearer'));
         });
+    }
+
+    /**
+     * Chat questions (Step 24): per user, on top of AiGuard's own per-user
+     * limits — this one rejects the HTTP request (429) before anything is
+     * stored, so a script can't fill the chat tables either.
+     */
+    protected function configureRateLimiting(): void
+    {
+        RateLimiter::for('ai-chat', fn (Request $request) => Limit::perMinute((int) config('ai.chat.requests_per_minute'))
+            ->by((string) $request->user()?->id));
     }
 
     /**

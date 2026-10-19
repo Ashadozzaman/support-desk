@@ -11,6 +11,7 @@ use App\Contracts\Repositories\AgentRepositoryInterface;
 use App\Contracts\Repositories\AiInteractionRepositoryInterface;
 use App\Contracts\Repositories\AttachmentRepositoryInterface;
 use App\Contracts\Repositories\AuditLogRepositoryInterface;
+use App\Contracts\Repositories\ChatRepositoryInterface;
 use App\Contracts\Repositories\DashboardRepositoryInterface;
 use App\Contracts\Repositories\ImportRepositoryInterface;
 use App\Contracts\Repositories\KnowledgeBaseRepositoryInterface;
@@ -26,6 +27,7 @@ use App\Repositories\Eloquent\AgentRepository;
 use App\Repositories\Eloquent\AiInteractionRepository;
 use App\Repositories\Eloquent\AttachmentRepository;
 use App\Repositories\Eloquent\AuditLogRepository;
+use App\Repositories\Eloquent\ChatRepository;
 use App\Repositories\Eloquent\DashboardRepository;
 use App\Repositories\Eloquent\ImportRepository;
 use App\Repositories\Eloquent\KnowledgeBaseRepository;
@@ -67,6 +69,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(RoleRepositoryInterface::class, RoleRepository::class);
         $this->app->bind(KnowledgeBaseRepositoryInterface::class, KnowledgeBaseRepository::class);
         $this->app->bind(AiInteractionRepositoryInterface::class, AiInteractionRepository::class);
+        $this->app->bind(ChatRepositoryInterface::class, ChatRepository::class);
 
         // Strategy selected from config, not hard-coded (ARCHITECTURE.md §6.2 OCP note).
         $this->app->bind(AssignmentStrategy::class, function (Application $app) {

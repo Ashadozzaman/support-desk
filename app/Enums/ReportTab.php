@@ -15,4 +15,5 @@ enum ReportTab: string
     case Agents = 'agents';
     case Aging = 'aging';
     case Categories = 'categories';
+    case Ai = 'ai';
 }

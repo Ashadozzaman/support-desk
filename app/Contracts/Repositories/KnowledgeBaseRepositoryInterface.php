@@ -35,6 +35,14 @@ interface KnowledgeBaseRepositoryInterface
      */
     public function search(string $query, int $limit = 5): Collection;
 
+    /**
+     * Title + slug of the given published articles (chat answer sources).
+     *
+     * @param  list<int>  $ids
+     * @return Collection<int, KbArticle>
+     */
+    public function publishedTitles(array $ids): Collection;
+
     /** Relations the article page and edit form show. */
     public function loadDetails(KbArticle $article): KbArticle;
 

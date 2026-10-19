@@ -59,6 +59,21 @@ return [
     // after this many days by the daily `model:prune`.
     'retention_days' => (int) env('AI_RETENTION_DAYS', 90),
 
+    // Customer support chatbot (Step 24).
+    'chat' => [
+        // Published KB articles put in front of the model per question.
+        'articles' => (int) env('AI_CHAT_ARTICLES', 4),
+        // Earlier messages sent along for context (user + assistant, oldest dropped first).
+        'history_messages' => (int) env('AI_CHAT_HISTORY_MESSAGES', 8),
+        'max_message_length' => (int) env('AI_CHAT_MAX_MESSAGE_LENGTH', 1000),
+        // HTTP throttle on sending a question (route limiter `ai-chat`).
+        'requests_per_minute' => (int) env('AI_CHAT_REQUESTS_PER_MINUTE', 6),
+        // Answers are short; this also caps the cost of one chat turn.
+        'max_tokens' => (int) env('AI_CHAT_MAX_TOKENS', 2048),
+        // Conversations (customer text included) are deleted after this many days by `model:prune`.
+        'retention_days' => (int) env('AI_CHAT_RETENTION_DAYS', 30),
+    ],
+
     'anthropic' => [
         'api_key' => env('ANTHROPIC_API_KEY'),
         'base_url' => env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),

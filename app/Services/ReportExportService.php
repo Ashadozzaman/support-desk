@@ -88,6 +88,19 @@ class ReportExportService
                     $c['avg_resolution_minutes'], $c['breach_rate_pct'],
                 ], $report),
             ],
+            ReportTab::Ai => [
+                ['Metric', 'Value'],
+                ['Conversations', $report['chats']['total']],
+                ['Handed off to a human', $report['chats']['handed_off']],
+                ['Closed without a ticket', $report['chats']['closed']],
+                ['Still open', $report['chats']['active']],
+                ['Deflection %', $report['chats']['deflection_pct']],
+                ['AI calls', $report['calls']['total']],
+                ['AI calls failed', $report['calls']['failed']],
+                ['AI calls refused', $report['calls']['refused']],
+                ['Tokens', $report['calls']['tokens']],
+                ['Avg latency (ms)', $report['calls']['avg_latency_ms']],
+            ],
         };
 
         return ['filename' => "report-{$tab->value}-{$period}.csv", 'rows' => $rows];

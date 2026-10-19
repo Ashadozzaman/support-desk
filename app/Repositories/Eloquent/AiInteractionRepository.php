@@ -8,6 +8,7 @@ use App\Contracts\Repositories\AiInteractionRepositoryInterface;
 use App\Enums\AiFeature;
 use App\Enums\AiInteractionStatus;
 use App\Models\AiInteraction;
+use Carbon\CarbonImmutable;
 
 class AiInteractionRepository implements AiInteractionRepositoryInterface
 {
@@ -36,5 +37,22 @@ class AiInteractionRepository implements AiInteractionRepositoryInterface
             'error_type' => $errorType,
             'created_at' => now(),
         ]);
+    }
+
+    public function usageBetween(CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        return AiInteraction::query()
+            ->where('created_at', '>=', $from)
+            ->where('created_at', '<', $to)
+            ->groupBy('status')
+            ->selectRaw('status, COUNT(*) AS calls, SUM(tokens_in + tokens_out) AS tokens, AVG(latency_ms) AS avg_latency_ms')
+            ->toBase()
+            ->get()
+            ->mapWithKeys(fn (object $row): array => [(string) $row->status => [
+                'calls' => (int) $row->calls,
+                'tokens' => (int) $row->tokens,
+                'avg_latency_ms' => (int) round((float) $row->avg_latency_ms),
+            ]])
+            ->all();
     }
 }

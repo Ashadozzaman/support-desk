@@ -1,5 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { BookOpenIcon } from 'lucide-react';
+import { AskAssistantCard } from '@/components/cards/AskAssistantCard';
 import { FilterCard } from '@/components/cards/FilterCard';
 import { KbArticleCard } from '@/components/cards/KbArticleCard';
 import { EmptyState } from '@/components/data/EmptyState';
@@ -10,7 +11,15 @@ import { index } from '@/routes/help';
 import type { KbArticleListItem } from '@/types/kb';
 import type { Paginated } from '@/types/pagination';
 
-export default function HelpIndex({ articles, query }: { articles: Paginated<KbArticleListItem>; query: string }) {
+export default function HelpIndex({
+    articles,
+    query,
+    chatAvailable,
+}: {
+    articles: Paginated<KbArticleListItem>;
+    query: string;
+    chatAvailable: boolean;
+}) {
     function search(term: string) {
         if (term === query) {
             return;
@@ -27,9 +36,11 @@ export default function HelpIndex({ articles, query }: { articles: Paginated<KbA
                 <div>
                     <h1 className="text-lg font-semibold">Help centre</h1>
                     <p className="text-muted-foreground text-sm">
-                        Answers to common questions. Can't find yours? Create a ticket.
+                        Answers to common questions.
                     </p>
                 </div>
+
+                <AskAssistantCard chatAvailable={chatAvailable} />
 
                 <FilterCard>
                     <SearchInput

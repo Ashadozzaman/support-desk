@@ -55,6 +55,18 @@ class KnowledgeBaseService
         return $query === null ? new Collection : $this->articles->search($query, $limit);
     }
 
+    /**
+     * Titles and slugs of chat-answer sources, keyed by id. An article
+     * unpublished since the answer simply drops out of the list.
+     *
+     * @param  list<int>  $ids
+     * @return Collection<int, KbArticle>
+     */
+    public function sources(array $ids): Collection
+    {
+        return $this->articles->publishedTitles($ids)->keyBy('id');
+    }
+
     public function forDisplay(KbArticle $article): KbArticle
     {
         return $this->articles->loadDetails($article);

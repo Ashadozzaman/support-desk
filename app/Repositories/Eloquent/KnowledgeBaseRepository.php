@@ -56,6 +56,15 @@ class KnowledgeBaseRepository implements KnowledgeBaseRepositoryInterface
             ->get();
     }
 
+    public function publishedTitles(array $ids): Collection
+    {
+        if ($ids === []) {
+            return new Collection;
+        }
+
+        return KbArticle::query()->published()->whereKey($ids)->get(['id', 'title', 'slug']);
+    }
+
     public function loadDetails(KbArticle $article): KbArticle
     {
         return $article->loadMissing('category:id,name');

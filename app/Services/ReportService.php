@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Contracts\Repositories\AiInteractionRepositoryInterface;
+use App\Contracts\Repositories\ChatRepositoryInterface;
 use App\Contracts\Repositories\ReportRepositoryInterface;
 use App\DTOs\ReportFilterData;
 use App\DTOs\ReportStatsData;
+use App\Enums\AiInteractionStatus;
+use App\Enums\ChatSessionStatus;
 use App\Enums\Permission;
 use App\Enums\ReportTab;
 use App\Enums\TicketPriority;
@@ -44,7 +48,11 @@ class ReportService
      */
     private const AGING_CACHE_SECONDS = 60;
 
-    public function __construct(private readonly ReportRepositoryInterface $reports) {}
+    public function __construct(
+        private readonly ReportRepositoryInterface $reports,
+        private readonly ChatRepositoryInterface $chats,
+        private readonly AiInteractionRepositoryInterface $aiInteractions,
+    ) {}
 
     /**
      * The Reports page computes only the tab being viewed.
@@ -60,6 +68,7 @@ class ReportService
             ReportTab::Agents => $this->agentPerformance($viewer, $filters),
             ReportTab::Aging => $this->aging($filters),
             ReportTab::Categories => $this->categories($filters),
+            ReportTab::Ai => $this->ai($filters),
         };
     }
 
@@ -86,6 +95,44 @@ class ReportService
             ]),
             'backlog' => $this->reports->snapshots($filters)->values()->all(),
             'now' => $this->reports->backlogNow($filters),
+        ];
+    }
+
+    /**
+     * AI assistant (Step 24): chatbot sessions started in the period and
+     * every AI provider call. Deflection = conversations the customer closed
+     * without asking for a human ÷ all conversations (ENHANCEMENTS.md §3);
+     * still-open conversations count in the total but not as deflected.
+     * The ticket filters (priority/category/agent) don't apply to this tab.
+     *
+     * @return array<string, mixed>
+     */
+    public function ai(ReportFilterData $filters): array
+    {
+        $sessions = $this->chats->sessionCountsBetween($filters->fromUtc(), $filters->toUtc());
+        $usage = $this->aiInteractions->usageBetween($filters->fromUtc(), $filters->toUtc());
+
+        $total = array_sum($sessions);
+        $closed = $sessions[ChatSessionStatus::Closed->value] ?? 0;
+        $calls = array_sum(array_column($usage, 'calls'));
+        $succeeded = $usage[AiInteractionStatus::Succeeded->value] ?? ['calls' => 0, 'avg_latency_ms' => 0];
+
+        return [
+            'chats' => [
+                'total' => $total,
+                'handed_off' => $sessions[ChatSessionStatus::HandedOff->value] ?? 0,
+                'closed' => $closed,
+                'active' => $sessions[ChatSessionStatus::Active->value] ?? 0,
+                'deflection_pct' => $total > 0 ? round($closed / $total * 100, 1) : null,
+            ],
+            'calls' => [
+                'total' => $calls,
+                'succeeded' => $succeeded['calls'],
+                'refused' => $usage[AiInteractionStatus::Refused->value]['calls'] ?? 0,
+                'failed' => $usage[AiInteractionStatus::Failed->value]['calls'] ?? 0,
+                'tokens' => array_sum(array_column($usage, 'tokens')),
+                'avg_latency_ms' => $succeeded['calls'] > 0 ? $succeeded['avg_latency_ms'] : null,
+            ],
         ];
     }
 

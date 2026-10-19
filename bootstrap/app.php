@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\ChatNotActiveException;
 use App\Exceptions\InvalidApiCredentialsException;
 use App\Exceptions\InvalidStatusTransitionException;
 use App\Exceptions\ProtectedRoleException;
@@ -111,6 +112,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]));
         $exceptions->map(InvalidApiCredentialsException::class, fn (InvalidApiCredentialsException $e) => ValidationException::withMessages([
             $e->field => $e->getMessage(),
+        ]));
+        $exceptions->map(ChatNotActiveException::class, fn (ChatNotActiveException $e) => ValidationException::withMessages([
+            'chat' => $e->getMessage(),
         ]));
         $exceptions->map(ProtectedRoleException::class, fn (ProtectedRoleException $e) => ValidationException::withMessages([
             $e->field => $e->getMessage(),

@@ -9,13 +9,17 @@ use App\Http\Resources\KbArticleListResource;
 use App\Http\Resources\KbArticleResource;
 use App\Models\KbArticle;
 use App\Services\KnowledgeBaseService;
+use App\Services\SupportChatService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class HelpCentreController extends Controller
 {
-    public function __construct(private readonly KnowledgeBaseService $knowledgeBase) {}
+    public function __construct(
+        private readonly KnowledgeBaseService $knowledgeBase,
+        private readonly SupportChatService $chat,
+    ) {}
 
     public function index(HelpCentreRequest $request): Response
     {
@@ -24,6 +28,8 @@ class HelpCentreController extends Controller
         return Inertia::render('help/index', [
             'articles' => KbArticleListResource::collection($this->knowledgeBase->helpCentre($request->searchTerm())),
             'query' => $request->searchTerm() ?? '',
+            // Cosmetic: the chat routes check the same thing (ai.enabled + ai.chat).
+            'chatAvailable' => $this->chat->isAvailableFor($request->user()),
         ]);
     }
 
