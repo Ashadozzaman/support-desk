@@ -8,6 +8,7 @@ use App\Enums\TicketStatus;
 use App\Models\AgentProfile;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\TicketAssignmentService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -142,4 +143,28 @@ test('the ticket list gives assign options with workload only to users who can a
     $agentOptions = $this->actingAs($agent)->get(route('tickets.index'))->assertOk()
         ->viewData('page')['props']['assignableAgents']['data'];
     expect($agentOptions)->toBe([]);
+});
+
+test('a manual assign racing a claim records the claiming agent as the previous assignee', function () use ($makeAgent) {
+    $admin = User::factory()->create();
+    $admin->assignRole(RoleEnum::Admin->value);
+    $claimer = $makeAgent();
+    $target = $makeAgent();
+    $ticket = Ticket::factory()->create(['status' => TicketStatus::Open->value, 'assigned_agent_id' => null]);
+
+    // The admin's copy is loaded while the ticket is still unassigned...
+    $staleCopy = Ticket::findOrFail($ticket->id);
+    // ...then an agent claims it before the admin submits the assign dialog.
+    app(TicketAssignmentService::class)->claim(Ticket::findOrFail($ticket->id), $claimer);
+
+    app(TicketAssignmentService::class)->assign($staleCopy, $target->id, $admin);
+
+    $ticket->refresh();
+    expect($ticket->assigned_agent_id)->toBe($target->id);
+    // claim bumped version to 1; the assign must build on it, not on the stale 0.
+    expect($ticket->version)->toBe(2);
+
+    $activity = $ticket->activities()->latest('id')->firstOrFail();
+    expect($activity->event)->toBe(ActivityEvent::TicketReassigned);
+    expect($activity->old_values)->toBe(['assigned_agent_id' => $claimer->id]);
 });

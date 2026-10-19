@@ -76,6 +76,14 @@ interface TicketRepositoryInterface
     public function claimIfUnassigned(Ticket $ticket, int $agentId): bool;
 
     /**
+     * Re-reads the ticket with `SELECT … FOR UPDATE` so the caller's
+     * transaction decides on the committed row, not on a copy loaded before
+     * it started. Must be called inside a transaction (the lock is released
+     * on commit).
+     */
+    public function findForUpdate(int $ticketId): ?Ticket;
+
+    /**
      * Manual/auto assignment (admin assign, reassign, auto-assign). Moves
      * an Open ticket to InProgress; leaves the status alone otherwise (e.g.
      * reassigning a ticket that is already InProgress).
