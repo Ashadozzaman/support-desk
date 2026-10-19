@@ -6,9 +6,9 @@ import { PriorityBadge } from '@/components/ticket/PriorityBadge';
 import { SlaBadge } from '@/components/ticket/SlaBadge';
 import { StatusBadge } from '@/components/ticket/StatusBadge';
 import { show } from '@/routes/tickets';
-import type { AgentOption, TicketListItem } from '@/types/ticket';
+import type { AssignableAgent, TicketListItem } from '@/types/ticket';
 
-export function TicketCard({ ticket, agents = [] }: { ticket: TicketListItem; agents?: AgentOption[] }) {
+export function TicketCard({ ticket, agents = [] }: { ticket: TicketListItem; agents?: AssignableAgent[] }) {
     const hasActions = ticket.can.claim || ticket.can.assign;
 
     return (

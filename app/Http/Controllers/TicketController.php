@@ -11,6 +11,7 @@ use App\Http\Requests\TicketFilterRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Http\Requests\UpdateTicketStatusRequest;
 use App\Http\Resources\ActivityResource;
+use App\Http\Resources\AssignableAgentResource;
 use App\Http\Resources\ReplyResource;
 use App\Http\Resources\TicketListResource;
 use App\Http\Resources\TicketResource;
@@ -55,6 +56,10 @@ class TicketController extends Controller
             ]),
             'categories' => $this->tickets->categoryOptions(),
             'agents' => $isStaff ? $this->assignments->agentOptions() : [],
+            // Per-row Assign dialog; the filter above only needs id + name.
+            'assignableAgents' => AssignableAgentResource::collection(
+                $user->can(Permission::TicketsAssign->value) ? $this->assignments->assignOptions() : [],
+            ),
             'customers' => $user->can(Permission::TicketsViewAny->value) ? $this->tickets->customerOptions() : [],
         ]);
     }
@@ -99,7 +104,9 @@ class TicketController extends Controller
                 'claim' => $user->can('claim', $ticket),
                 'assign' => $user->can('assign', $ticket),
             ],
-            'agents' => $user->can('assign', $ticket) ? $this->assignments->agentOptions() : [],
+            'agents' => AssignableAgentResource::collection(
+                $user->can('assign', $ticket) ? $this->assignments->assignOptions() : [],
+            ),
         ]);
     }
 

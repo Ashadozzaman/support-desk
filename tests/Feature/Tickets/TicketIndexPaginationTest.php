@@ -117,7 +117,7 @@ test('pagination across a page boundary is exact even when it falls between two 
  */
 function ticketNumbersOnPage(TestCase $test, User $user, int $page, int $perPage): array
 {
-    $version = hash_file('xxh128', public_path('build/manifest.json'));
+    $version = inertiaVersion();
 
     $response = $test->actingAs($user)
         ->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => $version])

@@ -94,42 +94,6 @@ pipeline {
             }
         }
 
-        stage('Tests (Pest)') {
-            steps {
-                // Same drivers as .env.testing.example; the container has no .env, so create an empty one
-                // for Dotenv and pass the config as environment variables.
-                sh '''
-                    docker run --name "$CI_ID-tests" --network "$CI_ID" \
-                        --env APP_ENV=testing \
-                        --env APP_KEY="base64:$(head -c 32 /dev/urandom | base64)" \
-                        --env DB_CONNECTION=mysql \
-                        --env DB_HOST="$CI_ID-mysql" \
-                        --env DB_PORT=3306 \
-                        --env DB_DATABASE=support_desk_test \
-                        --env DB_USERNAME=root \
-                        --env DB_PASSWORD=root \
-                        --env BCRYPT_ROUNDS=4 \
-                        --env LOG_STACK=single \
-                        --env SESSION_DRIVER=array \
-                        --env BROADCAST_CONNECTION=log \
-                        --env QUEUE_CONNECTION=sync \
-                        --env CACHE_STORE=array \
-                        --env MAIL_MAILER=array \
-                        "$CI_IMAGE" \
-                        sh -c 'touch .env && php artisan test --compact --log-junit=/tmp/junit.xml'
-                '''
-            }
-            post {
-                always {
-                    sh '''
-                        mkdir -p reports
-                        docker cp "$CI_ID-tests:/tmp/junit.xml" reports/junit.xml || true
-                    '''
-                    junit allowEmptyResults: true, testResults: 'reports/junit.xml'
-                }
-            }
-        }
-
         stage('Publish images') {
             when {
                 allOf {

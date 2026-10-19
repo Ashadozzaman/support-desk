@@ -25,7 +25,11 @@ class AttachmentResource extends JsonResource
             'original_name' => $this->original_name,
             'mime_type' => $this->mime_type,
             'size_bytes' => $this->size_bytes,
-            'download_url' => route('attachments.download', $this->id),
+            // API clients authenticate with a bearer token, which the
+            // session-only web route wouldn't accept.
+            'download_url' => $request->is('api/*')
+                ? route('api.v1.attachments.download', $this->id)
+                : route('attachments.download', $this->id),
         ];
     }
 }

@@ -21,6 +21,10 @@
         </include>
     </source>
     <php>
+        <!-- The whole suite runs in one process; the API-docs test makes
+             Scramble analyse every controller, and its analysis cache
+             stays in memory, which tipped the suite over PHP's 128M default. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

@@ -38,6 +38,14 @@ interface UserRepositoryInterface
     /** Marks an admin-created account verified — the admin vouches for the address. */
     public function markEmailVerified(User $user): void;
 
+    public function findByEmail(string $email): ?User;
+
+    /** Creates a Sanctum personal access token and returns its plain-text value. */
+    public function createApiToken(User $user, string $name): string;
+
+    /** Deletes the token the current API request was authenticated with. */
+    public function deleteCurrentApiToken(User $user): void;
+
     /**
      * Active users holding `$permission` (via any role or directly), with
      * their rows locked FOR UPDATE until the caller's transaction ends.
@@ -71,6 +79,15 @@ interface UserRepositoryInterface
      * @return Collection<int, User>
      */
     public function assignableAgents(): Collection;
+
+    /**
+     * Same agents as assignableAgents(), each with `active_tickets_count`
+     * and its agent profile (capacity, availability) loaded — so an admin
+     * assigning by hand can see who has room.
+     *
+     * @return Collection<int, User>
+     */
+    public function assignableAgentsWithWorkload(): Collection;
 
     /**
      * Every role with its permission names loaded.

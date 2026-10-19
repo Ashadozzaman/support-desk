@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\InvalidApiCredentialsException;
 use App\Exceptions\InvalidStatusTransitionException;
 use App\Exceptions\ProtectedRoleException;
 use App\Exceptions\TicketAlreadyAssignedException;
@@ -7,6 +8,7 @@ use App\Exceptions\UserLockoutException;
 use App\Http\Controllers\HealthController;
 use App\Http\Middleware\AssignRequestContext;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\ForceJsonResponse;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireHealthSecret;
@@ -28,6 +30,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
@@ -51,6 +54,8 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
+
+        $middleware->api(prepend: [ForceJsonResponse::class]);
 
         $middleware->alias([
             'role' => RoleMiddleware::class,
@@ -100,6 +105,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // A form error on the field that caused it, not a bare 422 page.
         $exceptions->map(UserLockoutException::class, fn (UserLockoutException $e) => ValidationException::withMessages([
+            $e->field => $e->getMessage(),
+        ]));
+        $exceptions->map(InvalidApiCredentialsException::class, fn (InvalidApiCredentialsException $e) => ValidationException::withMessages([
             $e->field => $e->getMessage(),
         ]));
         $exceptions->map(ProtectedRoleException::class, fn (ProtectedRoleException $e) => ValidationException::withMessages([

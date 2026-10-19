@@ -292,6 +292,11 @@ class TicketRepository implements TicketRepositoryInterface
         return $affected === 1;
     }
 
+    public function findForUpdate(int $ticketId): ?Ticket
+    {
+        return Ticket::query()->whereKey($ticketId)->lockForUpdate()->first();
+    }
+
     public function assign(Ticket $ticket, int $agentId): Ticket
     {
         $ticket->update([

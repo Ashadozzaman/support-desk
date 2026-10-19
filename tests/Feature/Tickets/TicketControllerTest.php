@@ -111,7 +111,7 @@ test('the ticket index tab defaults to active tickets only', function () {
     // The 'tickets/index' React page is only built in Step 5, so this
     // requests the Inertia XHR variant (X-Inertia header) directly rather
     // than a full-page render, which would fail resolving the Vite manifest.
-    $version = hash_file('xxh128', public_path('build/manifest.json'));
+    $version = inertiaVersion();
 
     $response = $this->actingAs($admin)
         ->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => $version])

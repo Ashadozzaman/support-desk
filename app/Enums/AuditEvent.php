@@ -25,6 +25,8 @@ enum AuditEvent: string
     case PasswordChanged = 'auth.password_changed';
     case TwoFactorEnabled = 'auth.two_factor_enabled';
     case TwoFactorDisabled = 'auth.two_factor_disabled';
+    case ApiTokenCreated = 'auth.api_token_created';
+    case ApiTokenRevoked = 'auth.api_token_revoked';
     case SlaPoliciesUpdated = 'admin.sla_policies_updated';
     case BusinessHoursUpdated = 'admin.business_hours_updated';
     case HolidayAdded = 'admin.holiday_added';
@@ -62,6 +64,8 @@ enum AuditEvent: string
             self::PasswordChanged => 'Password changed',
             self::TwoFactorEnabled => 'Two-factor enabled',
             self::TwoFactorDisabled => 'Two-factor disabled',
+            self::ApiTokenCreated => 'API token created',
+            self::ApiTokenRevoked => 'API token revoked',
             self::SlaPoliciesUpdated => 'SLA policies updated',
             self::BusinessHoursUpdated => 'Business hours updated',
             self::HolidayAdded => 'Holiday added',

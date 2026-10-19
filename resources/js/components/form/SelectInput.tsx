@@ -1,6 +1,7 @@
 import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react';
 import { useState } from 'react';
 import { FormField } from '@/components/form/FormField';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Command,
@@ -13,9 +14,16 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
+export type SelectOptionBadge = {
+    text: string;
+    variant?: 'secondary' | 'destructive' | 'outline';
+};
+
 export type SelectOption = {
     value: string;
     label: string;
+    /** Small extra info shown after the label (e.g. an agent's load); not searched. */
+    badges?: SelectOptionBadge[];
 };
 
 /**
@@ -61,8 +69,9 @@ export function SelectInput({
                         disabled={disabled}
                         className="w-full justify-between font-normal"
                     >
-                        <span className={cn('truncate', !selected && 'text-muted-foreground')}>
-                            {selected?.label ?? placeholder ?? 'Select…'}
+                        <span className={cn('flex min-w-0 items-center gap-2', !selected && 'text-muted-foreground')}>
+                            <span className="truncate">{selected?.label ?? placeholder ?? 'Select…'}</span>
+                            {selected && <OptionBadges badges={selected.badges} />}
                         </span>
                         <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
                     </Button>
@@ -88,7 +97,8 @@ export function SelectInput({
                                                 option.value === value ? 'opacity-100' : 'opacity-0',
                                             )}
                                         />
-                                        {option.label}
+                                        <span className="truncate">{option.label}</span>
+                                        <OptionBadges badges={option.badges} />
                                     </CommandItem>
                                 ))}
                             </CommandGroup>
@@ -97,5 +107,21 @@ export function SelectInput({
                 </PopoverContent>
             </Popover>
         </FormField>
+    );
+}
+
+function OptionBadges({ badges }: { badges?: SelectOptionBadge[] }) {
+    if (!badges || badges.length === 0) {
+        return null;
+    }
+
+    return (
+        <span className="ml-auto flex shrink-0 items-center gap-1">
+            {badges.map((badge) => (
+                <Badge key={badge.text} variant={badge.variant ?? 'secondary'} className="px-1.5 py-0 text-[10px] font-normal">
+                    {badge.text}
+                </Badge>
+            ))}
+        </span>
     );
 }

@@ -15,7 +15,7 @@ import { useTicketChannel } from '@/hooks/use-ticket-channel';
 import { dashboard } from '@/routes';
 import { edit, index, show } from '@/routes/tickets';
 import type { ReplyAbilities, ReplyItem } from '@/types/reply';
-import type { ActivityItem, AgentOption, Ticket } from '@/types/ticket';
+import type { ActivityItem, AssignableAgent, Ticket } from '@/types/ticket';
 
 export default function TicketsShow({
     ticket,
@@ -28,7 +28,7 @@ export default function TicketsShow({
     activities: { data: ActivityItem[] };
     replies: { data: ReplyItem[] };
     can: ReplyAbilities;
-    agents: AgentOption[];
+    agents: { data: AssignableAgent[] };
 }) {
     const t = ticket.data;
 
@@ -62,7 +62,7 @@ export default function TicketsShow({
                         {can.assign && (
                             <AssignAgentDialog
                                 ticketNumber={t.ticket_number}
-                                agents={agents}
+                                agents={agents.data}
                                 reassign={t.assigned_agent !== null}
                             />
                         )}

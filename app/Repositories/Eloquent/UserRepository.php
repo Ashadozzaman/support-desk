@@ -59,6 +59,23 @@ class UserRepository implements UserRepositoryInterface
         $user->forceFill(['email_verified_at' => now()])->save();
     }
 
+    public function findByEmail(string $email): ?User
+    {
+        return User::query()->where('email', $email)->first();
+    }
+
+    public function createApiToken(User $user, string $name): string
+    {
+        return $user->createToken($name)->plainTextToken;
+    }
+
+    public function deleteCurrentApiToken(User $user): void
+    {
+        // Always a PersonalAccessToken: the API accepts bearer tokens only
+        // (no cookie-based `statefulApi()`, which would give a TransientToken).
+        $user->currentAccessToken()->delete();
+    }
+
     public function lockActiveIdsWithPermission(string $permission): array
     {
         // Two steps so the lock covers only the current holders' rows (by
@@ -105,6 +122,20 @@ class UserRepository implements UserRepositoryInterface
             ->has('agentProfile')
             ->orderBy('name')
             ->get(['id', 'name']);
+    }
+
+    public function assignableAgentsWithWorkload(): Collection
+    {
+        return User::permission(Permission::TicketsClaim->value)
+            ->where('is_active', true)
+            ->has('agentProfile')
+            ->select(['id', 'name'])
+            // Correlated COUNT per agent, range-scanning that agent's slice of
+            // INDEX(assigned_agent_id, status, …) — one query, no N+1.
+            ->withCount(['assignedTickets as active_tickets_count' => fn (Builder $query) => $query->active()])
+            ->with('agentProfile:id,user_id,is_available,max_active_tickets')
+            ->orderBy('name')
+            ->get();
     }
 
     public function roles(): Collection

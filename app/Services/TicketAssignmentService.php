@@ -16,6 +16,7 @@ use App\Models\AgentProfile;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -74,12 +75,18 @@ class TicketAssignmentService
         return DB::transaction(function () use ($ticket, $agentId, $actor) {
             $agent = User::findOrFail($agentId);
 
-            $event = $ticket->assigned_agent_id === null
+            // $ticket was loaded before this transaction; an agent may have
+            // claimed it since. Lock and re-read so the activity names the
+            // real previous assignee and the version bump builds on theirs.
+            $locked = $this->tickets->findForUpdate($ticket->id)
+                ?? throw (new ModelNotFoundException)->setModel(Ticket::class, [$ticket->id]);
+
+            $event = $locked->assigned_agent_id === null
                 ? ActivityEvent::TicketAssigned
                 : ActivityEvent::TicketReassigned;
-            $previousAgentId = $ticket->assigned_agent_id;
+            $previousAgentId = $locked->assigned_agent_id;
 
-            $updated = $this->tickets->assign($ticket, $agent->id);
+            $updated = $this->tickets->assign($locked, $agent->id);
 
             $this->activity->log(
                 $updated,
@@ -105,7 +112,7 @@ class TicketAssignmentService
     public function autoAssign(Ticket $ticket): Ticket
     {
         return DB::transaction(function () use ($ticket) {
-            $locked = Ticket::query()->whereKey($ticket->id)->lockForUpdate()->first();
+            $locked = $this->tickets->findForUpdate($ticket->id);
 
             if ($locked === null || $locked->assigned_agent_id !== null) {
                 return $locked ?? $ticket;
@@ -188,13 +195,24 @@ class TicketAssignmentService
     }
 
     /**
-     * Agents for the AssignAgentDialog dropdown: active, with an agent
-     * profile and `tickets.claim` — the same rule auto-assign uses.
+     * Agents for the list's agent filter: active, with an agent profile
+     * and `tickets.claim` — the same rule auto-assign uses.
      *
      * @return Collection<int, User>
      */
     public function agentOptions(): Collection
     {
         return $this->users->assignableAgents();
+    }
+
+    /**
+     * Agents for the AssignAgentDialog, with their current active-ticket
+     * count and capacity so the admin can spread the load.
+     *
+     * @return Collection<int, User>
+     */
+    public function assignOptions(): Collection
+    {
+        return $this->users->assignableAgentsWithWorkload();
     }
 }
