@@ -6,6 +6,8 @@ namespace App\Notifications;
 
 use App\Models\Ticket;
 use App\Models\TicketReply;
+use App\Models\User;
+use App\Services\TicketEmailThreadService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
@@ -46,11 +48,17 @@ class ReplyReceived extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        $toCustomer = $notifiable instanceof User && $notifiable->id === $this->ticket->created_by;
+
+        $mail = (new MailMessage)
             ->subject("New reply on {$this->ticket->ticket_number}")
             ->line("{$this->reply->user->name} replied to \"{$this->ticket->subject}\":")
-            ->line(Str::limit($this->reply->body, 200))
+            // The customer gets the whole answer: someone who wrote in by email may have no
+            // password to read it in the app. Staff get a preview.
+            ->line($toCustomer ? $this->reply->body : Str::limit($this->reply->body, 200))
             ->action('View ticket', route('tickets.show', $this->ticket->ticket_number));
+
+        return app(TicketEmailThreadService::class)->thread($mail, $this->ticket, $notifiable);
     }
 
     /**

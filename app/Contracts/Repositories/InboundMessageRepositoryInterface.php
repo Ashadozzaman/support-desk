@@ -9,6 +9,7 @@ use App\Enums\InboundChannel;
 use App\Enums\InboundMessageStatus;
 use App\Models\InboundMessage;
 use App\Models\Ticket;
+use DateTimeInterface;
 
 interface InboundMessageRepositoryInterface
 {
@@ -31,4 +32,14 @@ interface InboundMessageRepositoryInterface
     public function ticketForThreadKeys(InboundChannel $channel, array $threadKeys): ?Ticket;
 
     public function rememberThreadKey(InboundChannel $channel, string $threadKey, Ticket $ticket): void;
+
+    /**
+     * The ticket's latest thread keys, oldest first.
+     *
+     * @return list<string>
+     */
+    public function threadKeysFor(InboundChannel $channel, Ticket $ticket, int $limit): array;
+
+    /** Messages already received from this sender since $since (this one included). */
+    public function countFromSenderSince(InboundChannel $channel, string $senderAddress, DateTimeInterface $since): int;
 }

@@ -10,6 +10,7 @@ use App\Enums\InboundChannel;
 use App\Enums\InboundMessageStatus;
 use App\Models\InboundMessage;
 use App\Models\Ticket;
+use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 
 class InboundMessageRepository implements InboundMessageRepositoryInterface
@@ -23,7 +24,7 @@ class InboundMessageRepository implements InboundMessageRepositoryInterface
         $inserted = InboundMessage::query()->insertOrIgnore([
             'channel' => $data->channel->value,
             'external_message_id' => $externalId,
-            'sender_address' => mb_substr($data->senderAddress, 0, 255),
+            'sender_address' => mb_substr(mb_strtolower(trim($data->senderAddress)), 0, 255),
             'subject' => $subject,
             'status' => InboundMessageStatus::Skipped->value,
             'received_at' => $data->receivedAt->utc(),
@@ -75,5 +76,27 @@ class InboundMessageRepository implements InboundMessageRepositoryInterface
             'ticket_id' => $ticket->id,
             'created_at' => now(),
         ]);
+    }
+
+    public function threadKeysFor(InboundChannel $channel, Ticket $ticket, int $limit): array
+    {
+        return DB::table('ticket_channel_threads')
+            ->where('ticket_id', $ticket->id)
+            ->where('channel', $channel->value)
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->pluck('thread_key')
+            ->reverse()
+            ->values()
+            ->all();
+    }
+
+    public function countFromSenderSince(InboundChannel $channel, string $senderAddress, DateTimeInterface $since): int
+    {
+        return InboundMessage::query()
+            ->where('channel', $channel->value)
+            ->where('sender_address', $senderAddress)
+            ->where('created_at', '>=', $since)
+            ->count();
     }
 }

@@ -118,6 +118,29 @@ class MailboxSettingsService
         }
     }
 
+    /**
+     * Addresses that are us: mail from them is never a customer's (loop prevention).
+     *
+     * @return list<string>
+     */
+    public function ownAddresses(): array
+    {
+        return array_values(array_unique(array_filter([
+            mb_strtolower((string) config('mail.from.address')),
+            mb_strtolower((string) $this->current()->username),
+        ])));
+    }
+
+    /** The address customers should reply to: the mailbox, once it is enabled. */
+    public function replyToAddress(): ?string
+    {
+        $settings = $this->mailbox->settings();
+
+        return $settings !== null && $settings->is_enabled && filter_var($settings->username, FILTER_VALIDATE_EMAIL) !== false
+            ? $settings->username
+            : null;
+    }
+
     public function connectionFor(MailboxSetting $settings): MailboxConnectionData
     {
         return new MailboxConnectionData(

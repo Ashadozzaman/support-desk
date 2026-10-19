@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Models\Ticket;
+use App\Services\TicketEmailThreadService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
@@ -42,11 +43,13 @@ class TicketResolved extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject("Ticket {$this->ticket->ticket_number} resolved")
             ->line("Your ticket \"{$this->ticket->subject}\" has been marked resolved.")
             ->line('Reply to it if the issue is not actually fixed, and it will reopen.')
             ->action('View ticket', route('tickets.show', $this->ticket->ticket_number));
+
+        return app(TicketEmailThreadService::class)->thread($mail, $this->ticket, $notifiable);
     }
 
     /**

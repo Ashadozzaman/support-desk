@@ -145,6 +145,12 @@ return [
     | saved (IMAP_PASSWORD keeps the secret out of the database if preferred).
     | The integration is on only once an admin enables it on the page.
     */
+    'inbound' => [
+        // Backstop against mail loops with auto-responders that send no
+        // Auto-Submitted header: more than this per sender per hour is skipped.
+        'max_per_sender_per_hour' => (int) env('INBOUND_MAX_PER_SENDER_PER_HOUR', 20),
+    ],
+
     'mailbox' => [
         'host' => env('IMAP_HOST', 'imap.gmail.com'),
         'port' => (int) env('IMAP_PORT', 993),

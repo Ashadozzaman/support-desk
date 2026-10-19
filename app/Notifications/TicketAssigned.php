@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Models\Ticket;
+use App\Services\TicketEmailThreadService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
@@ -42,10 +43,12 @@ class TicketAssigned extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject("Ticket {$this->ticket->ticket_number} assigned")
             ->line("Ticket \"{$this->ticket->subject}\" has been assigned to {$this->ticket->assignedAgent?->name}.")
             ->action('View ticket', route('tickets.show', $this->ticket->ticket_number));
+
+        return app(TicketEmailThreadService::class)->thread($mail, $this->ticket, $notifiable);
     }
 
     /**

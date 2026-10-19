@@ -28,5 +28,7 @@ readonly class InboundMessageData
         public array $threadKeys = [],
         public ?string $ticketNumberHint = null,
         public array $attachments = [],
+        /** Set by the adapter when this isn't a customer's message (auto-reply, bounce, our own mail). */
+        public ?string $skipReason = null,
     ) {}
 }

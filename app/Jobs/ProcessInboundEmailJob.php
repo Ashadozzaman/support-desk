@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Services\InboundMessageService;
+use App\Services\MailboxSettingsService;
 use App\Services\MailboxSyncService;
 use App\Support\Inbound\EmailMessageParser;
 use Illuminate\Bus\Queueable;
@@ -40,8 +41,12 @@ class ProcessInboundEmailJob implements ShouldQueue
         $this->queue = 'mail';
     }
 
-    public function handle(EmailMessageParser $parser, InboundMessageService $inbound, MailboxSyncService $syncs): void
-    {
+    public function handle(
+        EmailMessageParser $parser,
+        InboundMessageService $inbound,
+        MailboxSyncService $syncs,
+        MailboxSettingsService $settings,
+    ): void {
         $disk = Storage::disk('local');
 
         // Already processed by an earlier attempt.
@@ -49,7 +54,7 @@ class ProcessInboundEmailJob implements ShouldQueue
             return;
         }
 
-        $message = $inbound->receive($parser->parse((string) $disk->get($this->path)));
+        $message = $inbound->receive($parser->parse((string) $disk->get($this->path), $settings->ownAddresses()));
 
         $syncs->recordOutcome($this->syncId, $message);
         $disk->delete($this->path);

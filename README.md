@@ -141,6 +141,10 @@ A customer emails the support mailbox → a ticket is created through the normal
 auto-assign, notifications). Their reply to that conversation is added to **the same ticket** — matched by
 `In-Reply-To` / `References`, or a `[TKT-…]` number in the subject, and only on the sender's own ticket; never by
 subject text. The same message fetched twice never creates a second ticket (UNIQUE Message-ID).
+Ticket emails to the customer carry the conversation headers (`Message-ID` we remember, `In-Reply-To`,
+`References`, `[TKT-…]` subject, `Reply-To` the mailbox), so "Reply" in their mail client lands on the ticket.
+Auto-replies, bounces, list mail, our own mail and staff addresses are never imported, and one address can send at
+most 20 messages an hour (`INBOUND_MAX_PER_SENDER_PER_HOUR`).
 
 **Setup (Gmail):**
 1. On the Google account turn on 2-Step Verification, then create an app password at
@@ -167,7 +171,8 @@ mailbox or credentials are needed.
 **Troubleshooting:** *Authentication failed* → wrong or revoked app password (the normal Google password doesn't
 work over IMAP). *Could not connect* → host/port/encryption, or outbound port 993 blocked. *Nothing imported* →
 the first sync is the starting point; check that the `mail` worker and the scheduler run, and the Skipped/Failed
-counts in Sync history (`inbound_messages.skip_reason` says why a message was skipped). Customers receive agents'
+counts in Sync history (`inbound_messages.skip_reason` says why a message was skipped: `auto_reply`, `bounce`,
+`bulk_mail`, `own_mail`, `staff_sender`, `rate_limited`, …). Customers receive agents'
 replies by email only with a real mailer (`MAIL_MAILER=smtp`).
 
 ## Architecture overview

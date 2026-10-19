@@ -68,7 +68,9 @@ class InboundMessageService
                 return null;
             }
 
-            [$sender, $skipReason] = $this->resolveSender($data);
+            [$sender, $skipReason] = $data->skipReason !== null
+                ? [null, $data->skipReason]
+                : $this->resolveSender($data);
 
             if ($sender === null) {
                 $this->inbound->recordOutcome($message, [
@@ -127,6 +129,13 @@ class InboundMessageService
             return [null, 'invalid_sender'];
         }
 
+        // Before any account is created: a flood (e.g. an auto-responder answering our own
+        // confirmations without an Auto-Submitted header) stops here.
+        $recent = $this->inbound->countFromSenderSince($data->channel, $email, now()->subHour());
+        if ($recent > config('support.inbound.max_per_sender_per_hour')) {
+            return [null, 'rate_limited'];
+        }
+
         $user = $this->users->findByEmail($email);
 
         if ($user === null) {
@@ -146,6 +155,12 @@ class InboundMessageService
 
         if (! $user->can(Permission::TicketsCreate->value)) {
             return [null, 'sender_not_allowed'];
+        }
+
+        // Staff work tickets in the app. A staff address writing in is almost always a reply
+        // to one of their own notifications — importing it would open a ticket in their name.
+        if ($user->can(Permission::TicketsViewAny->value) || $user->can(Permission::TicketsViewQueue->value)) {
+            return [null, 'staff_sender'];
         }
 
         return [$user, null];
