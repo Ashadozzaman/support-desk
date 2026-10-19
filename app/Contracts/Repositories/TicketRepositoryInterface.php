@@ -13,6 +13,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection as BaseCollection;
 
 interface TicketRepositoryInterface
 {
@@ -80,4 +81,14 @@ interface TicketRepositoryInterface
      * reassigning a ticket that is already InProgress).
      */
     public function assign(Ticket $ticket, int $agentId): Ticket;
+
+    /**
+     * Ids of the oldest open, unassigned tickets created at or before
+     * `$createdBefore`, at most `$limit`. `$categoryIds === null` means any
+     * category; otherwise only those categories plus uncategorised tickets.
+     *
+     * @param  array<int, int>|null  $categoryIds
+     * @return BaseCollection<int, int>
+     */
+    public function unassignedIdsForSweep(CarbonImmutable $createdBefore, ?array $categoryIds, int $limit): BaseCollection;
 }

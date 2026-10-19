@@ -25,6 +25,15 @@ interface AgentRepositoryInterface
     public function candidatesFor(?int $categoryId): Collection;
 
     /**
+     * Every available agent still under `max_active_tickets`, regardless of
+     * category, annotated with `active_count` and with `user.categories`
+     * loaded — what the `tickets:auto-assign` sweep needs to size itself.
+     *
+     * @return Collection<int, AgentProfile>
+     */
+    public function withFreeCapacity(): Collection;
+
+    /**
      * SELECT ... FOR UPDATE SKIP LOCKED on a single agent_profiles row.
      * Returns null if another concurrent pick already holds the lock.
      */

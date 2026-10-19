@@ -32,6 +32,13 @@ class AutoAssignTicketJob implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 30;
 
+    /**
+     * Without this the unique lock lives until the job finishes — and if the
+     * job row is deleted (`queue:clear`) the lock is orphaned for the cache
+     * driver's 24h default, silently blocking that ticket from the sweep.
+     */
+    public int $uniqueFor = 600;
+
     public function __construct(public readonly int $ticketId) {}
 
     public function uniqueId(): string
@@ -50,11 +57,12 @@ class AutoAssignTicketJob implements ShouldBeUnique, ShouldQueue
         $assignments->autoAssign($ticket);
     }
 
+    /**
+     * Generic failure log + admin alert: AlertOnFailedJob. This line adds the
+     * job's own ids, which the generic queue log doesn't know.
+     */
     public function failed(Throwable $exception): void
     {
-        Log::error('Auto-assign job failed', [
-            'ticket_id' => $this->ticketId,
-            'error' => $exception->getMessage(),
-        ]);
+        Log::error('assignment.auto_assign_failed', ['ticket_id' => $this->ticketId, 'exception' => $exception::class]);
     }
 }

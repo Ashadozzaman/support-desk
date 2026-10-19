@@ -18,6 +18,11 @@ Schedule::command('reports:aggregate')->everyFifteenMinutes()->withoutOverlappin
 Schedule::command('reports:aggregate --yesterday')->dailyAt('00:30')->timezone(config('support.sla.timezone'))->withoutOverlapping(30)->onOneServer();
 Schedule::command('reports:snapshot')->dailyAt('23:55')->timezone(config('support.sla.timezone'))->withoutOverlapping(10)->onOneServer();
 Schedule::command('reports:weekly-digest')->weeklyOn(1, '08:00')->timezone(config('support.sla.timezone'))->withoutOverlapping(10)->onOneServer();
+// Heartbeats read by ScheduleCheck / QueueCheck (GET /health). The queue
+// one dispatches a tiny job to every watched queue; no withoutOverlapping —
+// each run is a cache write / a few dispatches.
+Schedule::command('health:schedule-check-heartbeat')->everyMinute();
+Schedule::command('health:queue-check-heartbeat')->everyMinute()->onOneServer();
 Schedule::command('queue:prune-batches --hours=48')->daily();
 Schedule::command('queue:prune-failed --hours=168')->daily();
 Schedule::command('model:prune')->daily();

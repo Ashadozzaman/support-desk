@@ -18,6 +18,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Services\ActivityLogService;
 use App\Services\SlaService;
+use App\Support\Logging\LogRedactor;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -60,6 +61,8 @@ class ProcessTicketImportJob implements ShouldQueue
         $import = $imports->findOrFail($this->importId);
         $imports->markStatus($import, ImportStatus::Processing);
 
+        Log::info('import.started', ['import_id' => $import->id, 'user_id' => $import->user_id]);
+
         $path = Storage::disk('local')->path($import->disk_path);
         $chunkSize = max(1, (int) config('support.import.chunk_size'));
 
@@ -87,10 +90,16 @@ class ProcessTicketImportJob implements ShouldQueue
         }
 
         $final = $imports->findOrFail($import->id);
-        $imports->markStatus(
-            $final,
-            $final->failed_rows > 0 ? ImportStatus::CompletedWithErrors : ImportStatus::Completed,
-        );
+        $status = $final->failed_rows > 0 ? ImportStatus::CompletedWithErrors : ImportStatus::Completed;
+        $imports->markStatus($final, $status);
+
+        Log::info('import.finished', [
+            'import_id' => $final->id,
+            'status' => $status->value,
+            'total_rows' => $final->total_rows,
+            'success_rows' => $final->success_rows,
+            'failed_rows' => $final->failed_rows,
+        ]);
 
         ImportProgressUpdated::dispatch($imports->findOrFail($import->id));
     }
@@ -150,7 +159,7 @@ class ProcessTicketImportJob implements ShouldQueue
 
             $successCount = count($validRows);
         } catch (Throwable $e) {
-            Log::error('Ticket import chunk failed', ['import_id' => $import->id, 'error' => $e->getMessage()]);
+            Log::error('import.chunk_failed', ['import_id' => $import->id, 'error' => LogRedactor::exceptionMessage($e)]);
 
             foreach ($validRows as $row) {
                 $errorRows[] = [
@@ -305,7 +314,9 @@ class ProcessTicketImportJob implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
-        Log::error('Ticket import job failed', ['import_id' => $this->importId, 'error' => $exception->getMessage()]);
+        // The generic failure is logged + alerted by AlertOnFailedJob; this
+        // line is the import's own record of it, next to import.started.
+        Log::error('import.failed', ['import_id' => $this->importId, 'exception' => $exception::class]);
 
         $import = Import::find($this->importId);
 

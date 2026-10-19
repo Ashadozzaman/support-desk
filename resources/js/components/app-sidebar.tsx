@@ -4,6 +4,7 @@ import {
     BookOpen,
     Clock,
     FolderGit2,
+    HeartPulseIcon,
     LayoutGrid,
     TicketIcon,
     UploadIcon,
@@ -24,6 +25,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useCan } from '@/hooks/use-can';
 import { dashboard } from '@/routes';
+import { systemHealth } from '@/routes/admin';
 import { index as agentsIndex } from '@/routes/admin/agents';
 import { index as businessHoursIndex } from '@/routes/admin/business-hours';
 import { index as importsIndex } from '@/routes/admin/imports';
@@ -64,6 +66,7 @@ export function AppSidebar() {
     const canManageImports = useCan('imports.manage');
     const canManageUsers = useCan('users.manage');
     const canViewReports = useCan('reports.view') || useCan('reports.view-own');
+    const canViewMonitoring = useCan('monitoring.view');
 
     const mainNavItems: NavItem[] = [
         ...baseNavItems,
@@ -109,6 +112,15 @@ export function AppSidebar() {
                       title: 'CSV Imports',
                       href: importsIndex(),
                       icon: UploadIcon,
+                  } satisfies NavItem,
+              ]
+            : []),
+        ...(canViewMonitoring
+            ? [
+                  {
+                      title: 'System health',
+                      href: systemHealth(),
+                      icon: HeartPulseIcon,
                   } satisfies NavItem,
               ]
             : []),

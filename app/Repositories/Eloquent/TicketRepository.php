@@ -19,6 +19,7 @@ use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Collection as BaseCollection;
 use Illuminate\Support\Facades\DB;
 
 class TicketRepository implements TicketRepositoryInterface
@@ -303,5 +304,22 @@ class TicketRepository implements TicketRepositoryInterface
         ]);
 
         return $ticket;
+    }
+
+    public function unassignedIdsForSweep(CarbonImmutable $createdBefore, ?array $categoryIds, int $limit): BaseCollection
+    {
+        // Ordered by created_at so the (status, created_at) index serves
+        // both the filter and the sort — no filesort over the backlog.
+        return Ticket::query()
+            ->where('status', TicketStatus::Open->value)
+            ->whereNull('assigned_agent_id')
+            ->where('created_at', '<=', $createdBefore)
+            ->when($categoryIds !== null, fn (Builder $q) => $q->where(function (Builder $inner) use ($categoryIds) {
+                $inner->whereIn('category_id', $categoryIds)->orWhereNull('category_id');
+            }))
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->limit($limit)
+            ->pluck('id');
     }
 }

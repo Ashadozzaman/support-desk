@@ -41,8 +41,12 @@ class WarmDashboardCacheJob implements ShouldBeUnique, ShouldQueue
         $dashboard->refreshGlobalCache();
     }
 
+    /**
+     * Generic failure log + admin alert: AlertOnFailedJob. Nothing to clean
+     * up — the previous cached value simply expires and the next run retries.
+     */
     public function failed(Throwable $exception): void
     {
-        Log::error('Dashboard cache warm failed', ['error' => $exception->getMessage()]);
+        Log::warning('dashboard.warm_failed', ['exception' => $exception::class]);
     }
 }

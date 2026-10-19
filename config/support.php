@@ -92,4 +92,29 @@ return [
         'export_ttl_days' => (int) env('SUPPORT_REPORTS_EXPORT_TTL_DAYS', 7),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Monitoring
+    |--------------------------------------------------------------------------
+    |
+    | slow_query_ms: a single query slower than this is written to the
+    | `performance` log channel (SQL only, never bindings). Some report and
+    | dashboard-warm queries legitimately exceed 500 ms at ~1M tickets, so
+    | expect those to show up; raise this if they are noise.
+    | failed_job_alert_minutes: at most one admin alert per job class per window.
+    | Health checks themselves: AppServiceProvider::configureHealthChecks().
+    */
+    'monitoring' => [
+        'slow_query_ms' => (int) env('SUPPORT_SLOW_QUERY_MS', 500),
+        'failed_job_alert_minutes' => (int) env('SUPPORT_FAILED_JOB_ALERT_MINUTES', 10),
+
+        // GET /health requires this in the X-Health-Secret header; empty =
+        // endpoint disabled (401 for everyone).
+        'health_secret' => env('HEALTH_SECRET'),
+
+        // Queues watched by QueueCheck/QueueBacklogCheck (`imports` excluded:
+        // its own worker may legitimately be busy for an hour).
+        'queues' => ['sla', 'default', 'notifications', 'broadcasts', 'exports'],
+    ],
+
 ];

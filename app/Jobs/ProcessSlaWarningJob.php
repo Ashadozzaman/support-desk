@@ -59,15 +59,24 @@ class ProcessSlaWarningJob implements ShouldQueue
 
             $activity->log($ticket, ActivityEvent::SlaWarning, null, [], ['sla_warning_at' => $ticket->sla_warning_at?->toIso8601String()]);
 
-            DB::afterCommit(fn () => SlaWarningTriggered::dispatch($ticket));
+            DB::afterCommit(function () use ($ticket) {
+                Log::channel('sla')->warning('sla.warning', [
+                    'ticket_id' => $ticket->id,
+                    'ticket_number' => $ticket->ticket_number,
+                    'priority' => $ticket->priority->value,
+                ]);
+
+                SlaWarningTriggered::dispatch($ticket);
+            });
         });
     }
 
+    /**
+     * Generic failure log + admin alert: AlertOnFailedJob. This line adds the
+     * job's own ids, which the generic queue log doesn't know.
+     */
     public function failed(Throwable $exception): void
     {
-        Log::error('SLA warning job failed', [
-            'ticket_id' => $this->ticketId,
-            'error' => $exception->getMessage(),
-        ]);
+        Log::channel('sla')->error('sla.warning_job_failed', ['ticket_id' => $this->ticketId, 'exception' => $exception::class]);
     }
 }

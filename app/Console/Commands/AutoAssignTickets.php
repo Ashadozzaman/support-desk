@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Enums\TicketStatus;
-use App\Jobs\AutoAssignTicketJob;
-use App\Models\Ticket;
+use App\Services\TicketAssignmentService;
 use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Scheduled sweep (QUEUE_SCHEDULER_REALTIME.md §3) that retries tickets no
@@ -19,18 +16,11 @@ class AutoAssignTickets extends Command
 {
     protected $signature = 'tickets:auto-assign';
 
-    protected $description = 'Re-queue auto-assignment for tickets still unassigned.';
+    protected $description = 'Re-queue auto-assignment for unassigned tickets, up to the agents\' free capacity.';
 
-    public function handle(): int
+    public function handle(TicketAssignmentService $assignments): int
     {
-        Ticket::query()
-            ->where('status', TicketStatus::Open->value)
-            ->whereNull('assigned_agent_id')
-            ->chunkById(200, function (Collection $tickets): void {
-                foreach ($tickets as $ticket) {
-                    AutoAssignTicketJob::dispatch($ticket->id);
-                }
-            });
+        $this->info($assignments->queueUnassignedForRetry().' ticket(s) queued for auto-assignment.');
 
         return self::SUCCESS;
     }

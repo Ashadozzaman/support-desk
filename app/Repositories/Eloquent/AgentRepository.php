@@ -30,6 +30,29 @@ class AgentRepository implements AgentRepositoryInterface
 
     public function candidatesFor(?int $categoryId): Collection
     {
+        return $this->underCapacity(
+            $this->availableWithActiveCount()
+                ->with('user:id,name')
+                ->when($categoryId !== null, fn (Builder $query) => $query->where(function (Builder $inner) use ($categoryId) {
+                    $inner->whereHas('user.categories', fn (Builder $q) => $q->whereKey($categoryId))
+                        ->orWhereDoesntHave('user.categories');
+                }))
+                ->get(),
+        );
+    }
+
+    public function withFreeCapacity(): Collection
+    {
+        return $this->underCapacity(
+            $this->availableWithActiveCount()->with('user.categories:id')->get(),
+        );
+    }
+
+    /**
+     * @return Builder<AgentProfile>
+     */
+    private function availableWithActiveCount(): Builder
+    {
         return AgentProfile::query()
             ->select('agent_profiles.*')
             ->addSelect([
@@ -39,13 +62,16 @@ class AgentRepository implements AgentRepositoryInterface
                     ->active()
                     ->whereColumn('tickets.assigned_agent_id', 'agent_profiles.user_id'),
             ])
-            ->with('user:id,name')
-            ->where('is_available', true)
-            ->when($categoryId !== null, fn (Builder $query) => $query->where(function (Builder $inner) use ($categoryId) {
-                $inner->whereHas('user.categories', fn (Builder $q) => $q->whereKey($categoryId))
-                    ->orWhereDoesntHave('user.categories');
-            }))
-            ->get()
+            ->where('is_available', true);
+    }
+
+    /**
+     * @param  Collection<int, AgentProfile>  $profiles
+     * @return Collection<int, AgentProfile>
+     */
+    private function underCapacity(Collection $profiles): Collection
+    {
+        return $profiles
             ->filter(fn (AgentProfile $profile) => (int) $profile->active_count < $profile->max_active_tickets)
             ->values();
     }

@@ -33,6 +33,7 @@ enum Permission: string
     case ReportsView = 'reports.view';
     case ReportsViewOwn = 'reports.view-own';
     case ReportsExport = 'reports.export';
+    case MonitoringView = 'monitoring.view';
 
     /**
      * @return list<string>

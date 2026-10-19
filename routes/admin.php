@@ -5,12 +5,17 @@ use App\Http\Controllers\Admin\BusinessHourController;
 use App\Http\Controllers\Admin\HolidayController;
 use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\Admin\SlaPolicyController;
+use App\Http\Controllers\Admin\SystemHealthController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('agents', [AgentController::class, 'index'])->name('agents.index');
     Route::get('agents/{agent}', [AgentController::class, 'show'])->name('agents.show');
     Route::get('agents/{agent}/daily-export', [AgentController::class, 'dailyExport'])->name('agents.daily-export');
+
+    Route::get('system-health', [SystemHealthController::class, 'index'])
+        ->middleware('permission:monitoring.view')
+        ->name('system-health');
 
     Route::get('sla-policies', [SlaPolicyController::class, 'index'])->name('sla-policies.index');
     Route::put('sla-policies', [SlaPolicyController::class, 'update'])->name('sla-policies.update');

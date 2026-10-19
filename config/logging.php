@@ -1,5 +1,6 @@
 <?php
 
+use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -54,8 +55,55 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
+            'channels' => explode(',', (string) env('LOG_STACK', 'app')),
             'ignore_exceptions' => false,
+        ],
+
+        /*
+        | Structured channels (ENHANCEMENTS.md §2.1). One JSON object per line
+        | so logs can be grepped/shipped by field (request_id, user_id come from
+        | Laravel Context on every line). `app` is the default via LOG_STACK;
+        | the others are written to explicitly with Log::channel('…').
+        | Security keeps 90 days because incident reviews look further back.
+        */
+        'app' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/app.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'max_files' => 14,
+            'formatter' => JsonFormatter::class,
+        ],
+
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security.log'),
+            'level' => 'info',
+            'max_files' => 90,
+            'formatter' => JsonFormatter::class,
+        ],
+
+        'sla' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/sla.log'),
+            'level' => 'info',
+            'max_files' => 14,
+            'formatter' => JsonFormatter::class,
+        ],
+
+        'performance' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/performance.log'),
+            'level' => 'info',
+            'max_files' => 14,
+            'formatter' => JsonFormatter::class,
+        ],
+
+        'queue' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/queue.log'),
+            'level' => 'info',
+            'max_files' => 14,
+            'formatter' => JsonFormatter::class,
         ],
 
         'single' => [

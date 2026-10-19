@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
+use Monolog\Handler\TestHandler;
 use Tests\TestCase;
 
 /*
@@ -44,7 +46,17 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Swaps a log channel's handlers for an in-memory TestHandler so a test can
+ * read the exact records written — including `extra` (Laravel Context, e.g.
+ * request_id), which Log::spy() can't see.
+ */
+function captureLog(string $channel): TestHandler
 {
-    // ..
+    $handler = new TestHandler;
+
+    Log::forgetChannel($channel);
+    Log::channel($channel)->getLogger()->setHandlers([$handler]);
+
+    return $handler;
 }

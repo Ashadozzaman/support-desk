@@ -39,7 +39,7 @@ class GenerateReportExportJob implements ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
-        Log::error('Report export failed', ['export_id' => $this->exportId, 'error' => $exception?->getMessage()]);
+        Log::error('report.export_failed', ['export_id' => $this->exportId, 'exception' => $exception ? $exception::class : null]);
 
         app(ReportExportService::class)->markFailed($this->exportId);
     }

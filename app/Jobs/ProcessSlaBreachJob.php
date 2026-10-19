@@ -64,15 +64,25 @@ class ProcessSlaBreachJob implements ShouldQueue
             $activity->log($ticket, ActivityEvent::SlaBreached, null, [], ['sla_due_at' => $ticket->sla_due_at?->toIso8601String()]);
             $activity->log($ticket, ActivityEvent::TicketEscalated, null, [], ['escalation_level' => $ticket->escalation_level]);
 
-            DB::afterCommit(fn () => SlaBreachedEvent::dispatch($ticket));
+            DB::afterCommit(function () use ($ticket) {
+                Log::channel('sla')->warning('sla.breached', [
+                    'ticket_id' => $ticket->id,
+                    'ticket_number' => $ticket->ticket_number,
+                    'priority' => $ticket->priority->value,
+                    'escalation_level' => $ticket->escalation_level,
+                ]);
+
+                SlaBreachedEvent::dispatch($ticket);
+            });
         });
     }
 
+    /**
+     * Generic failure log + admin alert: AlertOnFailedJob. This line adds the
+     * job's own ids, which the generic queue log doesn't know.
+     */
     public function failed(Throwable $exception): void
     {
-        Log::error('SLA breach job failed', [
-            'ticket_id' => $this->ticketId,
-            'error' => $exception->getMessage(),
-        ]);
+        Log::channel('sla')->error('sla.breach_job_failed', ['ticket_id' => $this->ticketId, 'exception' => $exception::class]);
     }
 }

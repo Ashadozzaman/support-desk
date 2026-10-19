@@ -15,20 +15,33 @@ use App\Policies\AttachmentPolicy;
 use App\Policies\BusinessHourPolicy;
 use App\Policies\HolidayPolicy;
 use App\Policies\ImportPolicy;
+use App\Policies\MonitoringPolicy;
 use App\Policies\ReplyPolicy;
 use App\Policies\ReportExportPolicy;
 use App\Policies\ReportPolicy;
 use App\Policies\SlaPolicyPolicy;
 use App\Policies\TicketPolicy;
 use App\Policies\UserPolicy;
+use App\Support\Health\FailedJobsCheck;
+use App\Support\Health\QueueBacklogCheck;
+use App\Support\Health\ReverbCheck;
+use App\Support\Health\SlaBacklogCheck;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\DevCommands;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Spatie\Health\Checks\Checks\CacheCheck;
+use Spatie\Health\Checks\Checks\DatabaseCheck;
+use Spatie\Health\Checks\Checks\QueueCheck;
+use Spatie\Health\Checks\Checks\ScheduleCheck;
+use Spatie\Health\Checks\Checks\UsedDiskSpaceCheck;
+use Spatie\Health\Facades\Health;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -48,6 +61,8 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configurePolicies();
         $this->configureDevCommands();
+        $this->configureSlowQueryLog();
+        $this->configureHealthChecks();
     }
 
     /**
@@ -95,6 +110,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('viewReportTab', [ReportPolicy::class, 'viewTab']);
         Gate::define('exportReports', [ReportPolicy::class, 'export']);
         Gate::policy(ReportExport::class, ReportExportPolicy::class);
+
+        // `viewPulse` is the ability Laravel Pulse checks for /pulse.
+        Gate::define('viewSystemHealth', [MonitoringPolicy::class, 'view']);
+        Gate::define('viewPulse', [MonitoringPolicy::class, 'view']);
     }
 
     /**
@@ -112,5 +131,53 @@ class AppServiceProvider extends ServiceProvider
         DevCommands::artisan('queue:listen --queue=sla,default,notifications,broadcasts,exports --tries=3', 'queue');
         DevCommands::artisan('schedule:work', 'schedule');
         DevCommands::artisan('reverb:start --debug', 'reverb');
+    }
+
+    /**
+     * Per-query slow log (ENHANCEMENTS.md §2.1). DB::listen rather than
+     * DB::whenQueryingForLongerThan: the latter fires on the *total* query
+     * time of a request/job, so it can't name the slow statement. Only the
+     * SQL with its `?` placeholders is logged — bindings can carry ticket
+     * text or emails.
+     */
+    protected function configureSlowQueryLog(): void
+    {
+        DB::listen(function (QueryExecuted $query): void {
+            if ($query->time < (int) config('support.monitoring.slow_query_ms')) {
+                return;
+            }
+
+            Log::channel('performance')->warning('query.slow', [
+                'sql' => $query->sql,
+                'ms' => round($query->time, 1),
+                'connection' => $query->connectionName,
+            ]);
+        });
+    }
+
+    /**
+     * Health checks behind GET /health and the System health page
+     * (ENHANCEMENTS.md §2.2). Schedule/Queue read heartbeats written by
+     * `health:schedule-check-heartbeat` / `health:queue-check-heartbeat`
+     * (routes/console.php) — a stale heartbeat means the scheduler or that
+     * queue's worker has stopped.
+     */
+    protected function configureHealthChecks(): void
+    {
+        $queues = config('support.monitoring.queues');
+
+        Health::checks([
+            DatabaseCheck::new(),
+            CacheCheck::new(),
+            UsedDiskSpaceCheck::new()
+                ->warnWhenUsedSpaceIsAbovePercentage(80)
+                ->failWhenUsedSpaceIsAbovePercentage(95),
+            ScheduleCheck::new()->heartbeatMaxAgeInMinutes(3),
+            QueueCheck::new()->onQueue($queues)->failWhenHealthJobTakesLongerThanMinutes(5),
+            QueueBacklogCheck::new()->queues($queues),
+            FailedJobsCheck::new(),
+            SlaBacklogCheck::new(),
+            ReverbCheck::new()->if(fn (): bool => config('broadcasting.default') === 'reverb'),
+        ]);
     }
 }
