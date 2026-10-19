@@ -18,6 +18,7 @@ import { index as agentsIndex } from "@/routes/admin/agents";
 import { index as businessHoursIndex } from "@/routes/admin/business-hours";
 import { index as importsIndex } from "@/routes/admin/imports";
 import { index as kbArticlesIndex } from "@/routes/admin/kb-articles";
+import { edit as mailboxEdit } from "@/routes/admin/mailbox";
 import { index as rolesIndex } from "@/routes/admin/roles";
 import { index as slaPoliciesIndex } from "@/routes/admin/sla-policies";
 import { index as usersIndex } from "@/routes/admin/users";
@@ -37,6 +38,7 @@ import {
     HeartPulseIcon,
     LifeBuoyIcon,
     LayoutGrid,
+    MailIcon,
     ScrollTextIcon,
     ShieldCheckIcon,
     TicketIcon,
@@ -69,6 +71,7 @@ export function AppSidebar() {
     const canManageSla = useCan("sla.manage");
     const canManageBusinessHours = useCan("business-hours.manage");
     const canManageImports = useCan("imports.manage");
+    const canManageMailbox = useCan("mailbox.manage");
     const canManageUsers = useCan("users.manage");
     const canManageRoles = useCan("roles.manage");
     const canManageKnowledgeBase = useCan("knowledge-base.manage");
@@ -162,6 +165,15 @@ export function AppSidebar() {
                       title: "CSV Imports",
                       href: importsIndex(),
                       icon: UploadIcon,
+                  } satisfies NavItem,
+              ]
+            : []),
+        ...(canManageMailbox
+            ? [
+                  {
+                      title: "Mailbox",
+                      href: mailboxEdit(),
+                      icon: MailIcon,
                   } satisfies NavItem,
               ]
             : []),

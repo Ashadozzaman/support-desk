@@ -177,7 +177,7 @@ class AppServiceProvider extends ServiceProvider
         // Overrides the framework default "queue" dev command, which only
         // listens on the "default" queue — our sla/notifications/broadcasts
         // jobs would otherwise never run under `composer dev`.
-        DevCommands::artisan('queue:listen --queue=sla,default,notifications,broadcasts,exports,ai --tries=3', 'queue');
+        DevCommands::artisan('queue:listen --queue=sla,default,mail,notifications,broadcasts,exports,ai --tries=3', 'queue');
         DevCommands::artisan('schedule:work', 'schedule');
         DevCommands::artisan('reverb:start --debug', 'reverb');
     }

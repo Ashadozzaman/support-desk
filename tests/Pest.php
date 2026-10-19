@@ -4,6 +4,7 @@ use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Monolog\Handler\TestHandler;
 use Tests\TestCase;
 
@@ -72,4 +73,43 @@ function captureLog(string $channel): TestHandler
 function inertiaVersion(): string
 {
     return (string) app(HandleInertiaRequests::class)->version(Request::create('/'));
+}
+
+/**
+ * A raw RFC 822 email for the mailbox tests.
+ *
+ * @param  array<string, string>  $headers  extra/overriding headers
+ * @param  array<string, string>  $attachments  filename => contents
+ */
+function rawEmail(array $headers = [], string $body = 'Hello, my order never arrived.', array $attachments = [], ?string $html = null): string
+{
+    $headers = array_merge([
+        'Message-ID' => '<'.Str::uuid().'@mail.example.com>',
+        'From' => '"Jane Doe" <jane@example.com>',
+        'To' => 'support@example.com',
+        'Subject' => 'Order missing',
+        'Date' => 'Mon, 19 Oct 2026 10:00:00 +0000',
+        'MIME-Version' => '1.0',
+    ], $headers);
+    $headers = array_filter($headers, fn (string $value) => $value !== '');
+
+    $parts = [$html === null
+        ? "Content-Type: text/plain; charset=utf-8\r\n\r\n{$body}\r\n"
+        : "Content-Type: text/html; charset=utf-8\r\n\r\n{$html}\r\n"];
+
+    foreach ($attachments as $name => $contents) {
+        $parts[] = "Content-Type: application/octet-stream; name=\"{$name}\"\r\n"
+            ."Content-Disposition: attachment; filename=\"{$name}\"\r\n"
+            ."Content-Transfer-Encoding: base64\r\n\r\n"
+            .chunk_split(base64_encode($contents))."\r\n";
+    }
+
+    $head = '';
+    foreach ($headers as $name => $value) {
+        $head .= "{$name}: {$value}\r\n";
+    }
+
+    return $head."Content-Type: multipart/mixed; boundary=\"b1\"\r\n\r\n"
+        .implode('', array_map(fn (string $part) => "--b1\r\n{$part}", $parts))
+        ."--b1--\r\n";
 }

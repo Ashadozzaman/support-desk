@@ -74,7 +74,7 @@ services:
     # sla, default, notifications, broadcasts, exports — in priority order (docs/QUEUE_SCHEDULER_REALTIME.md §2)
     queue:
         <<: [*php, *after-app]
-        command: php artisan queue:work --queue=sla,default,notifications,broadcasts,exports --tries=3 --max-time=3600
+        command: php artisan queue:work --queue=sla,default,mail,notifications,broadcasts,exports,ai --tries=3 --max-time=3600
         stop_grace_period: 60s
         healthcheck:
             test: ["CMD-SHELL", "pgrep -f 'queue:work' > /dev/null"]

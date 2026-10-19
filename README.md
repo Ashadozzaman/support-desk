@@ -69,7 +69,7 @@ Sample `Jenkinsfile`: install → configure → lint (Pint, tsc) → test (Pest 
 
 ## Background processing (required: queue + scheduler + Reverb)
 ```bash
-php artisan queue:work --queue=sla,default,notifications,broadcasts,exports,ai
+php artisan queue:work --queue=sla,default,mail,notifications,broadcasts,exports,ai
 php artisan queue:work --queue=imports --timeout=3600   # CSV import worker
 php artisan schedule:work          # local; production cron: * * * * * php artisan schedule:run
 php artisan reverb:start           # real-time notifications (WebSockets)
@@ -135,6 +135,40 @@ Laravel's own auth scaffolding.
 
 ## CSV import
 Admin → Imports → upload CSV. Expected columns: `external_ref, subject, description, priority, category, customer_email, status, created_at` (sample: `docs/samples/tickets-import.csv`). Processing is queued; progress and a downloadable error report are available on the import page.
+
+## Email-to-ticket (support mailbox)
+A customer emails the support mailbox → a ticket is created through the normal `TicketService` (SLA, number,
+auto-assign, notifications). Their reply to that conversation is added to **the same ticket** — matched by
+`In-Reply-To` / `References`, or a `[TKT-…]` number in the subject, and only on the sender's own ticket; never by
+subject text. The same message fetched twice never creates a second ticket (UNIQUE Message-ID).
+
+**Setup (Gmail):**
+1. On the Google account turn on 2-Step Verification, then create an app password at
+   <https://myaccount.google.com/apppasswords> (16 characters, shown once).
+2. Either put it in `.env` — `IMAP_USERNAME=you@gmail.com`, `IMAP_PASSWORD="abcd efgh ijkl mnop"` (quoted: it has
+   spaces) — or type it on **Admin → Mailbox** (stored encrypted with `APP_KEY`; a saved password wins over `.env`).
+   The password is never shown again, sent to the browser or written to logs; leave the field blank to keep it.
+3. **Admin → Mailbox**: host `imap.gmail.com`, port `993`, SSL, folder `INBOX` are prefilled → **Test connection**
+   → tick **Enabled** → **Save** → **Sync now**. The first sync only records the starting point: mail already in the
+   inbox is never imported. Send a test email from another address and sync again.
+
+**Running it:** a worker must listen on the `mail` queue and the scheduler must run:
+```bash
+php artisan queue:work --queue=sla,default,mail,notifications,broadcasts,exports,ai
+php artisan schedule:work            # mailbox:sync every minute; it syncs when the configured interval has passed
+php artisan mailbox:sync --now       # queue one sync immediately
+```
+Messages are read without being marked read, moved or deleted. Each sync is listed in **Sync history**
+(fetched / new tickets / replies / skipped / duplicates / failed).
+
+**Testing:** `php artisan test --compact tests/Feature/Inbound` — IMAP is replaced by `FakeMailboxClient`; no real
+mailbox or credentials are needed.
+
+**Troubleshooting:** *Authentication failed* → wrong or revoked app password (the normal Google password doesn't
+work over IMAP). *Could not connect* → host/port/encryption, or outbound port 993 blocked. *Nothing imported* →
+the first sync is the starting point; check that the `mail` worker and the scheduler run, and the Skipped/Failed
+counts in Sync history (`inbound_messages.skip_reason` says why a message was skipped). Customers receive agents'
+replies by email only with a real mailer (`MAIL_MAILER=smtp`).
 
 ## Architecture overview
 Controller → Service → Repository (SOLID, DTOs, enums, spatie RBAC + policies). Transactions live in services; events dispatch after commit. Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/DATABASE.md`](docs/DATABASE.md), [`docs/CODING_STRUCTURE.md`](docs/CODING_STRUCTURE.md).

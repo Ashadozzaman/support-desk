@@ -40,6 +40,7 @@ enum Permission: string
     case AiUseAssistant = 'ai.use-assistant';
     case AiChat = 'ai.chat';
     case AiManage = 'ai.manage';
+    case MailboxManage = 'mailbox.manage';
 
     /** Shown next to the checkbox in the roles editor (Step 19e). */
     public function label(): string
@@ -75,6 +76,7 @@ enum Permission: string
             self::AiUseAssistant => 'AI assistant on tickets (summaries, reply drafts, triage)',
             self::AiChat => 'Chat with the AI help bot',
             self::AiManage => 'AI settings and usage',
+            self::MailboxManage => 'Support mailbox (email-to-ticket) settings and sync',
         };
     }
 
