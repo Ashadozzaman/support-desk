@@ -51,6 +51,11 @@ docker compose exec app php artisan db:seed --force
 App <http://localhost:8000> · Mailpit <http://localhost:8025> · tests `docker compose run --rm tests`.
 Details (services, why no Supervisor, image stages, troubleshooting): [`docs/DOCKER.md`](docs/DOCKER.md).
 
+## CI/CD (Jenkins)
+`Jenkinsfile` (Multibranch Pipeline; the agent only needs Docker). GitHub Actions (`.github/workflows/tests.yml`) runs the same CI checks.
+* **CI, every branch/PR:** it builds the Dockerfile's `assets` stage (this also checks the frontend build), then runs Pint and `tsc` in parallel, then runs Pest against a throwaway MySQL 8.4 on a network for that build alone. JUnit results are published.
+* **CD, `main` only:** pushes `support-desk-app`/`-web` images tagged with the commit, waits for a manual approval, then `docker compose pull && up -d` on the server over SSH (the `app` container runs migrations on start). It is skipped until the Jenkins env vars `REGISTRY`, `DEPLOY_HOST` and `DEPLOY_PATH` (plus optional `VITE_REVERB_HOST/PORT/SCHEME`) and the credentials `docker-registry`, `reverb-app-key` and `deploy-ssh` exist. The server must already be logged in to the registry and hold `docker-compose.yml` + `.env.docker`. `APP_IMAGE`/`WEB_IMAGE` override the compose image names.
+
 ## Background processing (required: queue + scheduler + Reverb)
 ```bash
 php artisan queue:work --queue=sla,default,notifications,broadcasts
