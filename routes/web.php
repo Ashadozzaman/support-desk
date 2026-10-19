@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HelpCentreController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportExportController;
 use Illuminate\Support\Facades\Route;
@@ -11,6 +12,10 @@ Route::redirect('/', '/login')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Help centre (Step 22): published KB articles for every signed-in user.
+    Route::get('help', [HelpCentreController::class, 'index'])->name('help.index');
+    Route::get('help/{article:slug}', [HelpCentreController::class, 'show'])->name('help.show');
 
     // Not under /admin: agents may open it for their own performance row.
     // Middleware is the first gate; ReportPolicy (per tab) the second.

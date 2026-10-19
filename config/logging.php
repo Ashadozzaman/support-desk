@@ -106,6 +106,15 @@ return [
             'formatter' => JsonFormatter::class,
         ],
 
+        // AI calls (Step 22): metadata only, never prompt or answer text.
+        'ai' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ai.log'),
+            'level' => 'info',
+            'max_files' => 14,
+            'formatter' => JsonFormatter::class,
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),

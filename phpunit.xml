@@ -27,6 +27,9 @@
         <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="PULSE_ENABLED" value="false"/>
+        <env name="AI_ENABLED" value="false"/>
+        <env name="AI_PROVIDER" value="fake"/>
+        <env name="ANTHROPIC_API_KEY" value=""/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
     </php>

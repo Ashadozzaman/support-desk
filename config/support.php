@@ -114,7 +114,7 @@ return [
 
         // Queues watched by QueueCheck/QueueBacklogCheck (`imports` excluded:
         // its own worker may legitimately be busy for an hour).
-        'queues' => ['sla', 'default', 'notifications', 'broadcasts', 'exports'],
+        'queues' => ['sla', 'default', 'notifications', 'broadcasts', 'exports', 'ai'],
     ],
 
     /*

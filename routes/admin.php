@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BusinessHourController;
 use App\Http\Controllers\Admin\HolidayController;
 use App\Http\Controllers\Admin\ImportController;
+use App\Http\Controllers\Admin\KbArticleController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SlaPolicyController;
 use App\Http\Controllers\Admin\SystemHealthController;
@@ -55,6 +56,15 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
 
         Route::post('holidays', [HolidayController::class, 'store'])->name('holidays.store');
         Route::delete('holidays/{holiday}', [HolidayController::class, 'destroy'])->name('holidays.destroy');
+    });
+
+    Route::middleware('permission:knowledge-base.manage')->group(function () {
+        Route::get('kb-articles', [KbArticleController::class, 'index'])->name('kb-articles.index');
+        Route::get('kb-articles/create', [KbArticleController::class, 'create'])->name('kb-articles.create');
+        Route::post('kb-articles', [KbArticleController::class, 'store'])->name('kb-articles.store');
+        Route::get('kb-articles/{article}/edit', [KbArticleController::class, 'edit'])->name('kb-articles.edit');
+        Route::put('kb-articles/{article}', [KbArticleController::class, 'update'])->name('kb-articles.update');
+        Route::delete('kb-articles/{article}', [KbArticleController::class, 'destroy'])->name('kb-articles.destroy');
     });
 
     Route::middleware('permission:imports.manage')->group(function () {

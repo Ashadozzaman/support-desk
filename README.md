@@ -69,7 +69,7 @@ Sample `Jenkinsfile`: install → configure → lint (Pint, tsc) → test (Pest 
 
 ## Background processing (required: queue + scheduler + Reverb)
 ```bash
-php artisan queue:work --queue=sla,default,notifications,broadcasts,exports
+php artisan queue:work --queue=sla,default,notifications,broadcasts,exports,ai
 php artisan queue:work --queue=imports --timeout=3600   # CSV import worker
 php artisan schedule:work          # local; production cron: * * * * * php artisan schedule:run
 php artisan reverb:start           # real-time notifications (WebSockets)
@@ -160,6 +160,9 @@ Controller → Service → Repository (SOLID, DTOs, enums, spatie RBAC + policie
 - The SLA clock does not pause while a ticket is `waiting_for_customer` (design hook only, not in v1).
 - Ticket URLs use `ticket_number`, never the numeric id, so tickets can't be enumerated.
 - Imported tickets get SLA deadlines like normal tickets but don't email customers.
+- The help centre (`/help`) is for signed-in users only; there is no public, logged-out help page.
+- AI is off unless `AI_ENABLED=true`, `AI_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` are set. Without them a deterministic fake client is used, and AI endpoints return 404. Prompts and answers are never stored, only metadata (`ai_interactions`).
+- Chatbot retrieval uses MySQL FULLTEXT relevance over published articles, not vector embeddings (no vector type in MySQL 8.0, no extra provider).
 
 ### EXPLAIN evidence
 [Paste `EXPLAIN` output for: customer list, agent queue, SLA scan, keyword search.]
@@ -175,6 +178,7 @@ Implemented beyond the core requirements:
 - **Admin users & roles editor:** create users, edit roles and permissions, with lockout protection (the last active user who can manage users or roles can't lose that permission).
 - **Observability:** JSON logs with a request id, slow-query log, failed-job alerts, `/health` endpoint, Laravel Pulse.
 - **REST API v1 + OpenAPI docs:** Sanctum bearer tokens, tickets and replies (list/create/update/status/claim/assign, replies, attachment download), reusing the web app's FormRequests, policies and services. Interactive docs generated from the code (Scramble) at `/docs/api` for any signed-in user. Guide: [`docs/API.md`](docs/API.md).
+- **Knowledge base + AI foundation (Step 22):** help centre with search, admin article editor, and a provider-neutral AI layer (`AiGuard`: on/off flag, rate limits, daily token budget, circuit breaker, PII redaction, audit rows). Off by default.
 - **Scale-tested** on a ~1M-ticket database (`PerformanceSeeder`), see EXPLAIN evidence above.
 
 Not done: auto-close of resolved tickets, SLA pause while waiting for the customer, API endpoints for admin screens/reports (see `docs/API.md` §7).

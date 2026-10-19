@@ -36,6 +36,10 @@ enum Permission: string
     case MonitoringView = 'monitoring.view';
     case AuditView = 'audit.view';
     case RolesManage = 'roles.manage';
+    case KnowledgeBaseManage = 'knowledge-base.manage';
+    case AiUseAssistant = 'ai.use-assistant';
+    case AiChat = 'ai.chat';
+    case AiManage = 'ai.manage';
 
     /** Shown next to the checkbox in the roles editor (Step 19e). */
     public function label(): string
@@ -67,6 +71,10 @@ enum Permission: string
             self::MonitoringView => 'System health and Pulse',
             self::AuditView => 'Audit log',
             self::RolesManage => 'Manage roles and permissions',
+            self::KnowledgeBaseManage => 'Write and publish help-centre articles',
+            self::AiUseAssistant => 'AI assistant on tickets (summaries, reply drafts, triage)',
+            self::AiChat => 'Chat with the AI help bot',
+            self::AiManage => 'AI settings and usage',
         };
     }
 

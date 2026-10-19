@@ -6,6 +6,7 @@ use App\Models\Attachment;
 use App\Models\BusinessHour;
 use App\Models\Holiday;
 use App\Models\Import;
+use App\Models\KbArticle;
 use App\Models\ReportExport;
 use App\Models\SlaPolicy;
 use App\Models\Ticket;
@@ -16,6 +17,7 @@ use App\Policies\AuditLogPolicy;
 use App\Policies\BusinessHourPolicy;
 use App\Policies\HolidayPolicy;
 use App\Policies\ImportPolicy;
+use App\Policies\KbArticlePolicy;
 use App\Policies\MonitoringPolicy;
 use App\Policies\ReplyPolicy;
 use App\Policies\ReportExportPolicy;
@@ -24,6 +26,7 @@ use App\Policies\RolePolicy;
 use App\Policies\SlaPolicyPolicy;
 use App\Policies\TicketPolicy;
 use App\Policies\UserPolicy;
+use App\Support\Health\AiProviderCheck;
 use App\Support\Health\FailedJobsCheck;
 use App\Support\Health\QueueBacklogCheck;
 use App\Support\Health\ReverbCheck;
@@ -115,6 +118,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Holiday::class, HolidayPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);
+        Gate::policy(KbArticle::class, KbArticlePolicy::class);
 
         Gate::define('viewReports', [ReportPolicy::class, 'viewAny']);
         Gate::define('viewReportTab', [ReportPolicy::class, 'viewTab']);
@@ -158,7 +162,7 @@ class AppServiceProvider extends ServiceProvider
         // Overrides the framework default "queue" dev command, which only
         // listens on the "default" queue — our sla/notifications/broadcasts
         // jobs would otherwise never run under `composer dev`.
-        DevCommands::artisan('queue:listen --queue=sla,default,notifications,broadcasts,exports --tries=3', 'queue');
+        DevCommands::artisan('queue:listen --queue=sla,default,notifications,broadcasts,exports,ai --tries=3', 'queue');
         DevCommands::artisan('schedule:work', 'schedule');
         DevCommands::artisan('reverb:start --debug', 'reverb');
     }
@@ -208,6 +212,7 @@ class AppServiceProvider extends ServiceProvider
             FailedJobsCheck::new(),
             SlaBacklogCheck::new(),
             ReverbCheck::new()->if(fn (): bool => config('broadcasting.default') === 'reverb'),
+            AiProviderCheck::new()->if(fn (): bool => (bool) config('ai.enabled')),
         ]);
     }
 }

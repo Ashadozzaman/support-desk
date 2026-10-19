@@ -34,6 +34,7 @@ class RolesAndPermissionsSeeder extends Seeder
         PermissionEnum::AttachmentsUpload,
         PermissionEnum::DashboardViewOwn,
         PermissionEnum::ReportsViewOwn,
+        PermissionEnum::AiUseAssistant,
     ];
 
     /**
@@ -47,6 +48,7 @@ class RolesAndPermissionsSeeder extends Seeder
         PermissionEnum::TicketsUpdateOwn,
         PermissionEnum::RepliesCreate,
         PermissionEnum::AttachmentsUpload,
+        PermissionEnum::AiChat,
     ];
 
     public function run(): void

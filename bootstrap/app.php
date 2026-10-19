@@ -7,6 +7,7 @@ use App\Exceptions\TicketAlreadyAssignedException;
 use App\Exceptions\UserLockoutException;
 use App\Http\Controllers\HealthController;
 use App\Http\Middleware\AssignRequestContext;
+use App\Http\Middleware\EnsureAiEnabled;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\ForceJsonResponse;
 use App\Http\Middleware\HandleAppearance;
@@ -61,6 +62,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'ai.enabled' => EnsureAiEnabled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

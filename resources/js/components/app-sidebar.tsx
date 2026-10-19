@@ -17,17 +17,21 @@ import { auditLog, systemHealth } from "@/routes/admin";
 import { index as agentsIndex } from "@/routes/admin/agents";
 import { index as businessHoursIndex } from "@/routes/admin/business-hours";
 import { index as importsIndex } from "@/routes/admin/imports";
+import { index as kbArticlesIndex } from "@/routes/admin/kb-articles";
 import { index as rolesIndex } from "@/routes/admin/roles";
 import { index as slaPoliciesIndex } from "@/routes/admin/sla-policies";
 import { index as usersIndex } from "@/routes/admin/users";
+import { index as helpIndex } from "@/routes/help";
 import { index as reportsIndex } from "@/routes/reports";
 import { index as ticketsIndex } from "@/routes/tickets";
 import type { NavItem } from "@/types";
 import { Link } from "@inertiajs/react";
 import {
     BarChart3Icon,
+    BookOpenIcon,
     Clock,
     HeartPulseIcon,
+    LifeBuoyIcon,
     LayoutGrid,
     ScrollTextIcon,
     ShieldCheckIcon,
@@ -48,6 +52,11 @@ const baseNavItems: NavItem[] = [
         href: ticketsIndex(),
         icon: TicketIcon,
     },
+    {
+        title: "Help centre",
+        href: helpIndex(),
+        icon: LifeBuoyIcon,
+    },
 ];
 
 const footerNavItems: NavItem[] = [];
@@ -58,6 +67,7 @@ export function AppSidebar() {
     const canManageImports = useCan("imports.manage");
     const canManageUsers = useCan("users.manage");
     const canManageRoles = useCan("roles.manage");
+    const canManageKnowledgeBase = useCan("knowledge-base.manage");
     const canViewReports = useCan("reports.view") || useCan("reports.view-own");
     const canViewMonitoring = useCan("monitoring.view");
     const canViewAuditLog = useCan("audit.view");
@@ -93,6 +103,15 @@ export function AppSidebar() {
                       title: "Roles",
                       href: rolesIndex(),
                       icon: ShieldCheckIcon,
+                  } satisfies NavItem,
+              ]
+            : []),
+        ...(canManageKnowledgeBase
+            ? [
+                  {
+                      title: "Knowledge base",
+                      href: kbArticlesIndex(),
+                      icon: BookOpenIcon,
                   } satisfies NavItem,
               ]
             : []),
