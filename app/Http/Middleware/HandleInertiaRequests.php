@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\Permission;
 use App\Http\Resources\NotificationResource;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
@@ -48,6 +49,14 @@ class HandleInertiaRequests extends Middleware
                 'roles' => $user?->getRoleNames() ?? [],
                 'permissions' => $user?->getAllPermissions()->pluck('name') ?? [],
             ],
+            // Sidebar AI links (cosmetic — the routes check `ai.enabled` and the
+            // permission themselves). The customer help chat is hidden for staff
+            // (anyone with the data assistant): admin holds every permission, but
+            // the link is clutter there. Staff can still open it from the Help
+            // centre card to try the customer experience.
+            'aiChatAvailable' => $user !== null && (bool) config('ai.enabled')
+                && $user->can(Permission::AiChat->value) && ! $user->can(Permission::AiUseAssistant->value),
+            'aiDataAssistantAvailable' => $user !== null && (bool) config('ai.enabled') && $user->can(Permission::AiUseAssistant->value),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'notifications' => $user === null ? null : fn () => [
                 'unreadCount' => $notifications->unreadCountFor($user),

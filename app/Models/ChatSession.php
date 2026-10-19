@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\ChatAssistant;
 use App\Enums\ChatSessionStatus;
 use Database\Factories\ChatSessionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'status', 'ticket_id'])]
+#[Fillable(['user_id', 'assistant', 'status', 'ticket_id'])]
 class ChatSession extends Model
 {
     /** @use HasFactory<ChatSessionFactory> */
@@ -23,6 +24,7 @@ class ChatSession extends Model
     protected function casts(): array
     {
         return [
+            'assistant' => ChatAssistant::class,
             'status' => ChatSessionStatus::class,
         ];
     }

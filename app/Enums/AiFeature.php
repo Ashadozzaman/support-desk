@@ -14,6 +14,7 @@ enum AiFeature: string
     case ReplyDraft = 'reply_draft';
     case TicketSummary = 'ticket_summary';
     case SupportChat = 'support_chat';
+    case DataAssistant = 'data_assistant';
 
     public function model(): string
     {

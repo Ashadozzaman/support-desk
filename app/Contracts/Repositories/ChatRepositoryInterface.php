@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Contracts\Repositories;
 
+use App\Enums\ChatAssistant;
 use App\Enums\ChatMessageRole;
 use App\Models\ChatMessage;
 use App\Models\ChatSession;
@@ -20,9 +21,9 @@ interface ChatRepositoryInterface
      */
     public function lockOwner(User $user): void;
 
-    public function activeSessionFor(User $user): ?ChatSession;
+    public function activeSessionFor(User $user, ChatAssistant $assistant): ?ChatSession;
 
-    public function createSession(User $user): ChatSession;
+    public function createSession(User $user, ChatAssistant $assistant): ChatSession;
 
     /**
      * @return Collection<int, ChatMessage> oldest first
@@ -65,7 +66,8 @@ interface ChatRepositoryInterface
     public function closeIfActive(ChatSession $session): void;
 
     /**
-     * Sessions started in [from, to) per status, for the AI report.
+     * Help-chatbot sessions started in [from, to) per status, for the AI
+     * report (the staff assistant has no hand-off, so no deflection).
      *
      * @return array<string, int> status value => count
      */

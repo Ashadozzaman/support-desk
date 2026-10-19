@@ -21,13 +21,17 @@ import { index as kbArticlesIndex } from "@/routes/admin/kb-articles";
 import { index as rolesIndex } from "@/routes/admin/roles";
 import { index as slaPoliciesIndex } from "@/routes/admin/sla-policies";
 import { index as usersIndex } from "@/routes/admin/users";
+import { show as assistantShow } from "@/routes/assistant";
 import { index as helpIndex } from "@/routes/help";
+import { show as chatShow } from "@/routes/help/chat";
 import { index as reportsIndex } from "@/routes/reports";
 import { index as ticketsIndex } from "@/routes/tickets";
 import type { NavItem } from "@/types";
-import { Link } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
 import {
     BarChart3Icon,
+    BotIcon,
+    DatabaseZapIcon,
     BookOpenIcon,
     Clock,
     HeartPulseIcon,
@@ -68,12 +72,31 @@ export function AppSidebar() {
     const canManageUsers = useCan("users.manage");
     const canManageRoles = useCan("roles.manage");
     const canManageKnowledgeBase = useCan("knowledge-base.manage");
+    const { aiChatAvailable, aiDataAssistantAvailable } = usePage().props;
     const canViewReports = useCan("reports.view") || useCan("reports.view-own");
     const canViewMonitoring = useCan("monitoring.view");
     const canViewAuditLog = useCan("audit.view");
 
     const mainNavItems: NavItem[] = [
         ...baseNavItems,
+        ...(aiDataAssistantAvailable
+            ? [
+                  {
+                      title: "Data assistant",
+                      href: assistantShow(),
+                      icon: DatabaseZapIcon,
+                  } satisfies NavItem,
+              ]
+            : []),
+        ...(aiChatAvailable
+            ? [
+                  {
+                      title: "AI help chat",
+                      href: chatShow(),
+                      icon: BotIcon,
+                  } satisfies NavItem,
+              ]
+            : []),
         ...(canViewReports
             ? [
                   {

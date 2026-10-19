@@ -6,6 +6,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/** One question to an AI assistant — the help chat and the staff data assistant. */
 class AskSupportChatRequest extends FormRequest
 {
     public function authorize(): bool

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AiGuard;
 use App\Support\Ai\AnthropicClient;
 use App\Support\Ai\FakeAiClient;
+use App\Support\Ai\OpenAiClient;
 use App\Support\Health\AiProviderCheck;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,6 +42,8 @@ test('the fake client is bound unless AI is on with the anthropic provider', fun
     'disabled, anthropic' => [false, 'anthropic', FakeAiClient::class],
     'enabled, fake' => [true, 'fake', FakeAiClient::class],
     'enabled, anthropic' => [true, 'anthropic', AnthropicClient::class],
+    'enabled, openai' => [true, 'openai', OpenAiClient::class],
+    'disabled, openai' => [false, 'openai', FakeAiClient::class],
 ]);
 
 test('health check: missing key fails, open breaker or used budget warns, otherwise ok', function () {

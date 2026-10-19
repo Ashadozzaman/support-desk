@@ -13,6 +13,8 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
+            aiChatAvailable: boolean;
+            aiDataAssistantAvailable: boolean;
             notifications: NotificationSummary | null;
             [key: string]: unknown;
         };

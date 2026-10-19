@@ -19,7 +19,9 @@ use Throwable;
  *
  * Current models think before answering (adaptive thinking, on by
  * default); the response then holds `thinking` blocks before the `text`
- * blocks, and only the text is returned.
+ * blocks. Only the text is returned as `text`; the raw blocks come back in
+ * `content`, because a tool loop must send the assistant turn back
+ * unchanged (thinking blocks included).
  */
 class AnthropicClient implements AiClient
 {
@@ -49,6 +51,11 @@ class AnthropicClient implements AiClient
             'output_config' => ['effort' => (string) config('ai.effort')],
         ];
 
+        if ($request->tools !== []) {
+            // tool_choice stays "auto": current models reject forcing a tool.
+            $body['tools'] = $request->tools;
+        }
+
         if ($this->usesRefusalFallback($model)) {
             $headers['anthropic-beta'] = 'server-side-fallback-2026-07-01';
             $body['fallbacks'] = 'default';
@@ -69,6 +76,13 @@ class AnthropicClient implements AiClient
         if ($response->failed()) {
             $type = $response->json('error.type');
 
+            // An empty balance comes back as a 400 invalid_request_error; only
+            // the message tells it apart. Reported as billing_error (the
+            // message itself is never kept).
+            if (str_contains((string) $response->json('error.message'), 'credit balance')) {
+                $type = 'billing_error';
+            }
+
             throw AiProviderException::http($response->status(), is_string($type) ? $type : null);
         }
 
@@ -79,10 +93,22 @@ class AnthropicClient implements AiClient
             throw AiProviderException::invalidResponse();
         }
 
-        $text = collect($content)
-            ->filter(fn (mixed $block): bool => is_array($block) && ($block['type'] ?? null) === 'text')
+        $blocks = collect($content)->filter(fn (mixed $block): bool => is_array($block));
+
+        $text = $blocks
+            ->filter(fn (array $block): bool => ($block['type'] ?? null) === 'text')
             ->map(fn (array $block): string => (string) ($block['text'] ?? ''))
             ->implode("\n");
+
+        $toolCalls = $blocks
+            ->filter(fn (array $block): bool => ($block['type'] ?? null) === 'tool_use')
+            ->map(fn (array $block): array => [
+                'id' => (string) ($block['id'] ?? ''),
+                'name' => (string) ($block['name'] ?? ''),
+                'input' => is_array($block['input'] ?? null) ? $block['input'] : [],
+            ])
+            ->values()
+            ->all();
 
         return new AiResponse(
             text: trim($text),
@@ -90,6 +116,8 @@ class AnthropicClient implements AiClient
             inputTokens: (int) $response->json('usage.input_tokens', 0),
             outputTokens: (int) $response->json('usage.output_tokens', 0),
             stopReason: $stopReason,
+            toolCalls: $toolCalls,
+            content: $blocks->values()->all(),
         );
     }
 

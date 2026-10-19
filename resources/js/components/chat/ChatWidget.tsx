@@ -8,22 +8,33 @@ import { TextAreaInput } from '@/components/form/TextAreaInput';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ask, handoff, restart } from '@/routes/help/chat';
 import type { ChatMessage, ChatSources } from '@/types/chat';
 
 /**
- * The customer's conversation with the AI assistant. Each question is a
- * normal Inertia POST: the server stores it, answers, and the page reloads
- * the messages. "Talk to a human" is always available, and highlighted when
- * the assistant couldn't answer.
+ * A conversation with one of the AI assistants (help chat, data assistant).
+ * Each question is a normal Inertia POST: the server stores it, answers, and
+ * the page reloads the messages. With `handoffUrl` (help chat) "Talk to a
+ * human" is always available, and highlighted when the assistant couldn't answer.
  */
 export function ChatWidget({
+    title,
+    description,
+    emptyHint,
+    askUrl,
+    restartUrl,
+    handoffUrl,
     messages,
-    sources,
+    sources = {},
     maxLength,
 }: {
+    title: string;
+    description: string;
+    emptyHint: string;
+    askUrl: string;
+    restartUrl: string;
+    handoffUrl?: string;
     messages: ChatMessage[];
-    sources: ChatSources;
+    sources?: ChatSources;
     maxLength: number;
 }) {
     const { errors } = usePage().props;
@@ -48,7 +59,7 @@ export function ChatWidget({
         }
 
         setPending(text);
-        form.post(ask().url, {
+        form.post(askUrl, {
             preserveScroll: true,
             onSuccess: () => form.reset('message'),
             onFinish: () => setPending(null),
@@ -64,8 +75,12 @@ export function ChatWidget({
     }
 
     function talkToHuman() {
+        if (!handoffUrl) {
+            return;
+        }
+
         setHandingOff(true);
-        router.post(handoff().url, {}, { onFinish: () => setHandingOff(false) });
+        router.post(handoffUrl, {}, { onFinish: () => setHandingOff(false) });
     }
 
     return (
@@ -73,20 +88,15 @@ export function ChatWidget({
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <BotIcon className="size-5" />
-                    AI help assistant
+                    {title}
                 </CardTitle>
-                <CardDescription>
-                    You're chatting with an AI that answers from our help-centre articles. It can make mistakes and
-                    can't change your tickets. Talk to a human at any time.
-                </CardDescription>
+                <CardDescription>{description}</CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
                 <ol className="max-h-[55vh] space-y-3 overflow-y-auto" aria-live="polite" aria-label="Conversation">
                     {messages.length === 0 && !pending && (
-                        <li className="text-muted-foreground text-sm">
-                            Ask a question, for example “How do I reset my password?”
-                        </li>
+                        <li className="text-muted-foreground text-sm">{emptyHint}</li>
                     )}
                     {messages.map((message) => (
                         <ChatMessageItem key={message.id} message={message} sources={sources} />
@@ -135,19 +145,21 @@ export function ChatWidget({
                 <InputError message={errors.chat} />
                 <div className="flex flex-wrap justify-end gap-2 sm:ml-auto">
                     {messages.length > 0 && (
-                        <Button variant="ghost" onClick={() => router.post(restart().url)} disabled={form.processing}>
+                        <Button variant="ghost" onClick={() => router.post(restartUrl)} disabled={form.processing}>
                             <RotateCcwIcon />
                             New conversation
                         </Button>
                     )}
-                    <Button
-                        variant={suggestHuman ? 'default' : 'outline'}
-                        onClick={talkToHuman}
-                        disabled={handingOff || form.processing || messages.length === 0}
-                    >
-                        <UserRoundIcon />
-                        Talk to a human
-                    </Button>
+                    {handoffUrl && (
+                        <Button
+                            variant={suggestHuman ? 'default' : 'outline'}
+                            onClick={talkToHuman}
+                            disabled={handingOff || form.processing || messages.length === 0}
+                        >
+                            <UserRoundIcon />
+                            Talk to a human
+                        </Button>
+                    )}
                 </div>
             </CardFooter>
         </Card>

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DataAssistantController;
 use App\Http\Controllers\HelpCentreController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportExportController;
@@ -27,6 +28,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('help/{article:slug}', [HelpCentreController::class, 'show'])->name('help.show');
+
+    // Staff data assistant (Step 24b): read-only lookups, scoped to the asker.
+    Route::middleware(['permission:ai.use-assistant', 'ai.enabled'])->prefix('assistant')->name('assistant.')->group(function () {
+        Route::get('/', [DataAssistantController::class, 'show'])->name('show');
+        Route::post('messages', [DataAssistantController::class, 'ask'])->middleware('throttle:ai-chat')->name('ask');
+        Route::post('restart', [DataAssistantController::class, 'startOver'])->name('restart');
+    });
 
     // Not under /admin: agents may open it for their own performance row.
     // Middleware is the first gate; ReportPolicy (per tab) the second.

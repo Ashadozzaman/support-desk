@@ -14,8 +14,27 @@ use Throwable;
  */
 class AiProviderException extends RuntimeException
 {
-    public function __construct(string $message, public readonly string $errorType, ?Throwable $previous = null)
-    {
+    /** Kinds of failure an admin can fix in the provider account or .env (problem()). */
+    public const MISSING_KEY = 'missing_key';
+
+    public const INVALID_KEY = 'invalid_key';
+
+    public const NO_CREDIT = 'no_credit';
+
+    public const OTHER = 'other';
+
+    // Provider error codes/types per kind: Anthropic (authentication_error,
+    // billing_error) and OpenAI (invalid_api_key, insufficient_quota).
+    private const INVALID_KEY_TYPES = ['authentication_error', 'invalid_api_key'];
+
+    private const NO_CREDIT_TYPES = ['billing_error', 'insufficient_quota'];
+
+    public function __construct(
+        string $message,
+        public readonly string $errorType,
+        ?Throwable $previous = null,
+        public readonly ?int $status = null,
+    ) {
         parent::__construct($message, 0, $previous);
     }
 
@@ -34,11 +53,25 @@ class AiProviderException extends RuntimeException
      */
     public static function http(int $status, ?string $type): self
     {
-        return new self("AI provider returned HTTP {$status}.", $type ?? "http_{$status}");
+        return new self("AI provider returned HTTP {$status}.", $type ?? "http_{$status}", status: $status);
     }
 
     public static function invalidResponse(): self
     {
         return new self('The AI provider returned a response the app could not read.', 'invalid_response');
+    }
+
+    /**
+     * What an admin would have to fix, for the staff-facing message
+     * (DataAssistantService). Customers never see this.
+     */
+    public function problem(): string
+    {
+        return match (true) {
+            $this->errorType === 'not_configured' => self::MISSING_KEY,
+            $this->status === 401 || in_array($this->errorType, self::INVALID_KEY_TYPES, true) => self::INVALID_KEY,
+            $this->status === 402 || in_array($this->errorType, self::NO_CREDIT_TYPES, true) => self::NO_CREDIT,
+            default => self::OTHER,
+        };
     }
 }

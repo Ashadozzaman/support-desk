@@ -11,14 +11,15 @@ return [
     |
     | The whole app works with AI disabled and no API key: AiGuard refuses
     | every call and the AI routes 404 (EnsureAiEnabled). `provider` picks the
-    | AiClient implementation (RepositoryServiceProvider); anything other than
-    | "anthropic" — or AI disabled — binds the deterministic FakeAiClient.
+    | AiClient implementation (RepositoryServiceProvider): "anthropic",
+    | "openai", or anything else — or AI disabled — the deterministic FakeAiClient.
     */
     'enabled' => (bool) env('AI_ENABLED', false),
 
     'provider' => env('AI_PROVIDER', 'fake'),
 
-    // One model for every feature unless a feature has its own override
+    // A model of the chosen provider (e.g. claude-haiku-5-5 for anthropic,
+    // gpt-4.1-mini for openai). One model for every feature unless a feature has its own override
     // (AiFeature::model()). Empty override = use the default.
     'model' => env('AI_MODEL', 'claude-opus-5-5'),
     'models' => [
@@ -26,6 +27,7 @@ return [
         'reply_draft' => env('AI_MODEL_REPLY_DRAFT'),
         'ticket_summary' => env('AI_MODEL_SUMMARY'),
         'support_chat' => env('AI_MODEL_CHAT'),
+        'data_assistant' => env('AI_MODEL_DATA_ASSISTANT'),
     ],
 
     // Thinking counts towards max_tokens on current models, so this is not a
@@ -72,6 +74,20 @@ return [
         'max_tokens' => (int) env('AI_CHAT_MAX_TOKENS', 2048),
         // Conversations (customer text included) are deleted after this many days by `model:prune`.
         'retention_days' => (int) env('AI_CHAT_RETENTION_DAYS', 30),
+    ],
+
+    // Staff data assistant (Step 24b): answers from read-only lookups.
+    'data_assistant' => [
+        // Model ↔ lookup round trips per question before giving up.
+        'max_rounds' => (int) env('AI_DATA_ASSISTANT_MAX_ROUNDS', 4),
+        // Rows one ticket lookup may return to the model.
+        'max_rows' => (int) env('AI_DATA_ASSISTANT_MAX_ROWS', 20),
+    ],
+
+    // Chat Completions API (OpenAiClient). `effort` and `refusal_fallback` are Anthropic-only.
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com'),
     ],
 
     'anthropic' => [

@@ -167,6 +167,14 @@ class TicketService
     }
 
     /**
+     * @return array{total: int, tickets: Collection<int, Ticket>}
+     */
+    public function resolvedBetween(User $viewer, CarbonImmutable $from, CarbonImmutable $to, int $limit): array
+    {
+        return $this->tickets->resolvedBetweenFor($viewer, $from, $to, $limit);
+    }
+
+    /**
      * Active categories for the ticket create/edit form. No dedicated
      * CategoryRepository exists yet (category admin CRUD is out of scope
      * for this phase) so this is a direct, read-only model query.

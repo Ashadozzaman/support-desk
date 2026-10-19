@@ -161,7 +161,7 @@ Controller → Service → Repository (SOLID, DTOs, enums, spatie RBAC + policie
 - Ticket URLs use `ticket_number`, never the numeric id, so tickets can't be enumerated.
 - Imported tickets get SLA deadlines like normal tickets but don't email customers.
 - The help centre (`/help`) is for signed-in users only; there is no public, logged-out help page.
-- AI is off unless `AI_ENABLED=true`, `AI_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` are set. Without them a deterministic fake client is used, and AI endpoints return 404. Prompts and answers are never stored, only metadata (`ai_interactions`).
+- AI is off unless `AI_ENABLED=true` and a provider with its key are set: `AI_PROVIDER=anthropic` + `ANTHROPIC_API_KEY`, or `AI_PROVIDER=openai` + `OPENAI_API_KEY` (set `AI_MODEL` to a model of that provider, e.g. `gpt-4.1-mini`). A Claude Pro subscription does not include API access. Without them a deterministic fake client is used, and AI endpoints return 404. Prompts and answers are never stored, only metadata (`ai_interactions`).
 - A chat hand-off creates a Medium-priority ticket with no category (no AI triage); the agent adjusts it after reading the transcript.
 - Chatbot retrieval uses MySQL FULLTEXT relevance over published articles, not vector embeddings (no vector type in MySQL 8.0, no extra provider).
 
@@ -179,6 +179,7 @@ Implemented beyond the core requirements:
 - **Admin users & roles editor:** create users, edit roles and permissions, with lockout protection (the last active user who can manage users or roles can't lose that permission).
 - **Observability:** JSON logs with a request id, slow-query log, failed-job alerts, `/health` endpoint, Laravel Pulse.
 - **REST API v1 + OpenAPI docs:** Sanctum bearer tokens, tickets and replies (list/create/update/status/claim/assign, replies, attachment download), reusing the web app's FormRequests, policies and services. Interactive docs generated from the code (Scramble) at `/docs/api` for any signed-in user. Guide: [`docs/API.md`](docs/API.md).
+- **AI data assistant for staff (Step 24b):** `/assistant` answers "latest tickets", "resolved today", "last 7 days report" by calling read-only lookups that run with the asker's own permissions (an agent only sees their queue). Never sees ticket descriptions, replies or internal notes; can't change anything.
 - **AI support chatbot (Step 24):** `/help/chat` answers customers from published help-centre articles only, cites them, never sees tickets or internal notes, has no tools, and hands off to a normal ticket in one click. Reports → AI assistant tab shows the deflection rate. Needs `AI_ENABLED=true` + an Anthropic key.
 - **Knowledge base + AI foundation (Step 22):** help centre with search, admin article editor, and a provider-neutral AI layer (`AiGuard`: on/off flag, rate limits, daily token budget, circuit breaker, PII redaction, audit rows). Off by default.
 - **Scale-tested** on a ~1M-ticket database (`PerformanceSeeder`), see EXPLAIN evidence above.

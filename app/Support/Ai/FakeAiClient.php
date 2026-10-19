@@ -20,6 +20,9 @@ class FakeAiClient implements AiClient
 
     private ?string $nextText = null;
 
+    /** @var list<array{name: string, input: array<string, mixed>}> */
+    private array $toolCallQueue = [];
+
     /** Tests: make the next call return this text. */
     public function respondWith(string $text): self
     {
@@ -28,14 +31,36 @@ class FakeAiClient implements AiClient
         return $this;
     }
 
+    /**
+     * Tests: make the next call ask for this lookup instead of answering
+     * (queue several for several rounds of a tool loop).
+     *
+     * @param  array<string, mixed>  $input
+     */
+    public function callTool(string $name, array $input = []): self
+    {
+        $this->toolCallQueue[] = ['name' => $name, 'input' => $input];
+
+        return $this;
+    }
+
     public function complete(AiRequest $request): AiResponse
     {
         $this->requests[] = $request;
 
+        $toolCall = array_shift($this->toolCallQueue);
+
+        if ($toolCall !== null) {
+            $id = 'toolu_fake_'.count($this->requests);
+            $block = ['type' => 'tool_use', 'id' => $id, 'name' => $toolCall['name'], 'input' => $toolCall['input']];
+
+            return new AiResponse('', 'fake', 10, 10, 'tool_use', [['id' => $id, ...$toolCall]], [$block]);
+        }
+
         $text = $this->nextText ?? "Fake {$request->feature->value} answer.";
         $this->nextText = null;
 
-        $prompt = $request->system.implode('', array_column($request->messages, 'content'));
+        $prompt = $request->system.json_encode($request->messages);
 
         return new AiResponse(
             text: $text,
@@ -43,6 +68,7 @@ class FakeAiClient implements AiClient
             inputTokens: intdiv(strlen($prompt), 4) + 1,
             outputTokens: intdiv(strlen($text), 4) + 1,
             stopReason: 'end_turn',
+            content: [['type' => 'text', 'text' => $text]],
         );
     }
 }

@@ -3,7 +3,27 @@ import { BotIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { show } from '@/routes/help';
+import { show as ticketShow } from '@/routes/tickets';
 import type { ChatMessage, ChatSources } from '@/types/chat';
+
+const TICKET_NUMBER = /(TKT-\d{4}-\d+)/;
+
+/**
+ * Plain text with ticket numbers turned into links (the server still checks
+ * access when the link is opened). Splitting on a capturing group keeps the
+ * numbers at the odd indexes; nothing is rendered as HTML.
+ */
+function withTicketLinks(text: string) {
+    return text.split(TICKET_NUMBER).map((part, index) =>
+        index % 2 === 1 ? (
+            <Link key={index} href={ticketShow(part)} className="font-mono underline underline-offset-2">
+                {part}
+            </Link>
+        ) : (
+            part
+        ),
+    );
+}
 
 export function ChatMessageItem({ message, sources }: { message: ChatMessage; sources: ChatSources }) {
     const fromAssistant = message.role === 'assistant';
@@ -24,7 +44,7 @@ export function ChatMessageItem({ message, sources }: { message: ChatMessage; so
                     </Badge>
                 )}
                 <span className="sr-only">{fromAssistant ? 'AI assistant said:' : 'You said:'}</span>
-                <p className="whitespace-pre-wrap">{message.content}</p>
+                <p className="whitespace-pre-wrap">{withTicketLinks(message.content)}</p>
                 {cited.some((source) => source.article) && (
                     <div className="space-y-1 border-t pt-2">
                         <p className="text-muted-foreground text-xs font-medium">Sources</p>

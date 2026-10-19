@@ -330,3 +330,25 @@ test('old conversations are pruned with their messages', function () {
 
     expect(ChatSession::count())->toBe(0)->and(ChatMessage::count())->toBe(0);
 });
+
+test('the sidebar help-chat link is for customers only, and only while AI is on', function () {
+    $agent = User::factory()->create();
+    $agent->assignRole(RoleEnum::Agent->value);
+    $admin = User::factory()->create();
+    $admin->assignRole(RoleEnum::Admin->value);
+
+    // Admin holds ai.chat (every permission) but is staff: no sidebar link,
+    // while the page itself and the help-centre card stay available.
+    $this->actingAs($admin)->get(route('help.index'))
+        ->assertInertia(fn (Assert $page) => $page->where('aiChatAvailable', false)->where('chatAvailable', true));
+    $this->actingAs($admin)->get(route('help.chat.show'))->assertOk();
+
+    $this->actingAs($this->customer)->get(route('help.index'))
+        ->assertInertia(fn (Assert $page) => $page->where('aiChatAvailable', true));
+    $this->actingAs($agent)->get(route('help.index'))
+        ->assertInertia(fn (Assert $page) => $page->where('aiChatAvailable', false));
+
+    config(['ai.enabled' => false]);
+    $this->actingAs($this->customer)->get(route('help.index'))
+        ->assertInertia(fn (Assert $page) => $page->where('aiChatAvailable', false));
+});

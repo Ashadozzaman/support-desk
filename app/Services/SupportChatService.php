@@ -9,6 +9,7 @@ use App\DTOs\AiRequest;
 use App\DTOs\ChatConversationData;
 use App\DTOs\CreateTicketData;
 use App\Enums\AiFeature;
+use App\Enums\ChatAssistant;
 use App\Enums\ChatMessageRole;
 use App\Enums\Permission;
 use App\Enums\TicketPriority;
@@ -66,7 +67,7 @@ class SupportChatService
 
     public function conversation(User $customer): ChatConversationData
     {
-        $session = $this->chats->activeSessionFor($customer);
+        $session = $this->chats->activeSessionFor($customer, ChatAssistant::Support);
         $messages = $session ? $this->chats->messages($session) : new Collection;
 
         $articleIds = $messages->pluck('kb_article_ids')->filter()->flatten()->unique()->values()->all();
@@ -84,7 +85,7 @@ class SupportChatService
         $session = DB::transaction(function () use ($customer, $question) {
             $this->chats->lockOwner($customer);
 
-            $session = $this->chats->activeSessionFor($customer) ?? $this->chats->createSession($customer);
+            $session = $this->chats->activeSessionFor($customer, ChatAssistant::Support) ?? $this->chats->createSession($customer, ChatAssistant::Support);
             $this->chats->addMessage($session, ChatMessageRole::User, $question);
 
             return $session;
@@ -132,7 +133,7 @@ class SupportChatService
     public function handOff(User $customer): Ticket
     {
         return DB::transaction(function () use ($customer) {
-            $session = $this->chats->activeSessionFor($customer);
+            $session = $this->chats->activeSessionFor($customer, ChatAssistant::Support);
 
             if ($session === null) {
                 return $this->existingHandOffTicket($customer);
@@ -163,7 +164,7 @@ class SupportChatService
     /** "New conversation": the old one ends without a ticket. */
     public function startOver(User $customer): void
     {
-        $session = $this->chats->activeSessionFor($customer);
+        $session = $this->chats->activeSessionFor($customer, ChatAssistant::Support);
 
         if ($session !== null) {
             $this->chats->closeIfActive($session);

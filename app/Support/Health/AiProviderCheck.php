@@ -29,8 +29,10 @@ class AiProviderCheck extends Check
             'daily_token_budget' => $budget,
         ]);
 
-        if (config('ai.provider') === 'anthropic' && (string) config('ai.anthropic.api_key') === '') {
-            return $result->failed('AI is enabled but ANTHROPIC_API_KEY is empty.')->shortSummary('No API key');
+        $provider = (string) config('ai.provider');
+
+        if (in_array($provider, ['anthropic', 'openai'], true) && (string) config("ai.{$provider}.api_key") === '') {
+            return $result->failed('AI is enabled but '.strtoupper($provider).'_API_KEY is empty.')->shortSummary('No API key');
         }
 
         if ($guard->circuitIsOpen()) {

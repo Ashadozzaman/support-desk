@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories\Eloquent;
 
 use App\Contracts\Repositories\ChatRepositoryInterface;
+use App\Enums\ChatAssistant;
 use App\Enums\ChatMessageRole;
 use App\Enums\ChatSessionStatus;
 use App\Models\ChatMessage;
@@ -21,19 +22,21 @@ class ChatRepository implements ChatRepositoryInterface
         User::query()->whereKey($user->id)->lockForUpdate()->first(['id']);
     }
 
-    public function activeSessionFor(User $user): ?ChatSession
+    public function activeSessionFor(User $user, ChatAssistant $assistant): ?ChatSession
     {
         return ChatSession::query()
             ->where('user_id', $user->id)
+            ->where('assistant', $assistant)
             ->where('status', ChatSessionStatus::Active)
             ->latest('id')
             ->first();
     }
 
-    public function createSession(User $user): ChatSession
+    public function createSession(User $user, ChatAssistant $assistant): ChatSession
     {
         return ChatSession::create([
             'user_id' => $user->id,
+            'assistant' => $assistant,
             'status' => ChatSessionStatus::Active,
         ]);
     }
@@ -91,6 +94,7 @@ class ChatRepository implements ChatRepositoryInterface
     {
         $ticketId = ChatSession::query()
             ->where('user_id', $user->id)
+            ->where('assistant', ChatAssistant::Support)
             ->where('status', ChatSessionStatus::HandedOff)
             ->whereNotNull('ticket_id')
             ->where('updated_at', '>=', $since)
@@ -112,6 +116,7 @@ class ChatRepository implements ChatRepositoryInterface
     public function sessionCountsBetween(CarbonImmutable $from, CarbonImmutable $to): array
     {
         return ChatSession::query()
+            ->where('assistant', ChatAssistant::Support)
             ->where('created_at', '>=', $from)
             ->where('created_at', '<', $to)
             ->groupBy('status')

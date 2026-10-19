@@ -155,6 +155,32 @@ class TicketRepository implements TicketRepositoryInterface
             ]);
     }
 
+    /**
+     * Ranges over INDEX(resolved_at, …) and orders by it, so it reads only the
+     * period's rows — the created_at branches of paginateFor() would scan
+     * every resolved ticket to find the ones resolved today.
+     */
+    public function resolvedBetweenFor(User $viewer, CarbonImmutable $from, CarbonImmutable $to, int $limit): array
+    {
+        $query = Ticket::query()
+            ->visibleTo($viewer)
+            ->where('resolved_at', '>=', $from)
+            ->where('resolved_at', '<', $to);
+
+        return [
+            'total' => (clone $query)->count(),
+            'tickets' => $query
+                ->select([
+                    'id', 'ticket_number', 'subject', 'status', 'priority', 'category_id',
+                    'assigned_agent_id', 'created_at', 'resolved_at',
+                ])
+                ->with(['category:id,name', 'assignedAgent:id,name'])
+                ->orderByDesc('resolved_at')
+                ->limit($limit)
+                ->get(),
+        ];
+    }
+
     public function countActiveForAgent(int $agentId): int
     {
         return Ticket::query()->where('assigned_agent_id', $agentId)->active()->count();

@@ -164,3 +164,30 @@ test('an unreadable response becomes a provider exception', function () {
     expect(fn () => (new AnthropicClient)->complete(chatRequest()))
         ->toThrow(fn (AiProviderException $e) => expect($e->errorType)->toBe('invalid_response'));
 });
+
+test('tools are sent, and tool_use blocks come back as tool calls with the raw content', function () {
+    $tools = [['name' => 'current_summary', 'description' => 'Live counts', 'input_schema' => ['type' => 'object', 'properties' => new stdClass]]];
+    Http::fake(['*' => Http::response(messagesResponse([
+        'content' => [
+            ['type' => 'thinking', 'thinking' => '', 'signature' => 'sig'],
+            ['type' => 'tool_use', 'id' => 'toolu_1', 'name' => 'current_summary', 'input' => []],
+        ],
+        'stop_reason' => 'tool_use',
+    ]))]);
+
+    $response = (new AnthropicClient)->complete(new AiRequest(AiFeature::DataAssistant, 'sys', [['role' => 'user', 'content' => 'hi']], null, $tools));
+
+    Http::assertSent(fn (Request $request) => $request['tools'][0]['name'] === 'current_summary' && ! isset($request['tool_choice']));
+    expect($response->wantsTools())->toBeTrue()
+        ->and($response->toolCalls)->toBe([['id' => 'toolu_1', 'name' => 'current_summary', 'input' => []]])
+        ->and($response->content[0]['type'])->toBe('thinking')
+        ->and($response->text)->toBe('');
+});
+
+test('no tools key is sent when the request has none', function () {
+    Http::fake(['*' => Http::response(messagesResponse())]);
+
+    (new AnthropicClient)->complete(chatRequest());
+
+    Http::assertSent(fn (Request $request) => ! isset($request['tools']));
+});

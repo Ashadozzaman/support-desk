@@ -40,6 +40,7 @@ use App\Repositories\Eloquent\TicketRepository;
 use App\Repositories\Eloquent\UserRepository;
 use App\Support\Ai\AnthropicClient;
 use App\Support\Ai\FakeAiClient;
+use App\Support\Ai\OpenAiClient;
 use App\Support\Assignment\LeastWorkloadStrategy;
 use App\Support\Assignment\RoundRobinStrategy;
 use Illuminate\Contracts\Foundation\Application;
@@ -82,9 +83,15 @@ class RepositoryServiceProvider extends ServiceProvider
         // Real provider only when AI is on *and* configured for it; otherwise
         // the deterministic fake, so dev/CI/tests never need a key (ENHANCEMENTS.md §3.1).
         $this->app->bind(AiClient::class, function (Application $app) {
-            return config('ai.enabled') && config('ai.provider') === 'anthropic'
-                ? $app->make(AnthropicClient::class)
-                : $app->make(FakeAiClient::class);
+            if (! config('ai.enabled')) {
+                return $app->make(FakeAiClient::class);
+            }
+
+            return match (config('ai.provider')) {
+                'anthropic' => $app->make(AnthropicClient::class),
+                'openai' => $app->make(OpenAiClient::class),
+                default => $app->make(FakeAiClient::class),
+            };
         });
     }
 }

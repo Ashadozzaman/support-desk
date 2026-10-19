@@ -57,10 +57,7 @@ class AiGuard
         }
 
         if (config('ai.redact_pii')) {
-            $request = $request->withMessages(array_map(
-                fn (array $message): array => ['role' => $message['role'], 'content' => $this->redactor->redact($message['content'])],
-                $request->messages,
-            ));
+            $request = $request->withMessages(array_map($this->redactMessage(...), $request->messages));
         }
 
         $started = hrtime(true);
@@ -68,7 +65,12 @@ class AiGuard
         try {
             $response = $this->client->complete($request);
         } catch (AiProviderException $e) {
-            $this->recordFailure();
+            // A missing key never left the app: not a provider outage, so it
+            // doesn't pause calls (which would hide the "key missing" reason).
+            if ($e->problem() !== AiProviderException::MISSING_KEY) {
+                $this->recordFailure();
+            }
+
             $this->logger->failed($request, $e, $this->elapsedMs($started), $user, $ticketId);
 
             throw $e;
@@ -93,6 +95,37 @@ class AiGuard
         $clean = (string) preg_replace('/<\s*\/?\s*'.preg_quote($tag, '/').'\b[^>]*>/i', '', $text);
 
         return "<{$tag}>\n{$clean}\n</{$tag}>";
+    }
+
+    /**
+     * Only the user side is redacted: customer text and tool results (data
+     * from our DB). Assistant turns are sent back exactly as the model wrote
+     * them — their thinking blocks are signed and must not change.
+     *
+     * @param  array{role: string, content: string|list<array<string, mixed>>}  $message
+     * @return array{role: string, content: string|list<array<string, mixed>>}
+     */
+    private function redactMessage(array $message): array
+    {
+        if ($message['role'] !== 'user') {
+            return $message;
+        }
+
+        if (is_string($message['content'])) {
+            return [...$message, 'content' => $this->redactor->redact($message['content'])];
+        }
+
+        $message['content'] = array_map(function (array $block): array {
+            if (($block['type'] ?? null) === 'text') {
+                $block['text'] = $this->redactor->redact((string) $block['text']);
+            } elseif (($block['type'] ?? null) === 'tool_result' && is_string($block['content'] ?? null)) {
+                $block['content'] = $this->redactor->redact($block['content']);
+            }
+
+            return $block;
+        }, $message['content']);
+
+        return $message;
     }
 
     public function circuitIsOpen(): bool
