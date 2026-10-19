@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Enums\AuditEvent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
 use App\Http\Requests\Settings\TwoFactorAuthenticationRequest;
+use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
@@ -13,6 +15,8 @@ use Laravel\Fortify\Features;
 
 class SecurityController extends Controller
 {
+    public function __construct(private readonly AuditLogService $audit) {}
+
     /**
      * Show the user's security settings page.
      */
@@ -57,6 +61,12 @@ class SecurityController extends Controller
     {
         $request->user()->update([
             'password' => $request->password,
+        ]);
+
+        // Starter-kit action (no event fires for it), so it's recorded here.
+        $this->audit->record(AuditEvent::PasswordChanged, $request->user(), $request->user(), [
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
         ]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated.')]);

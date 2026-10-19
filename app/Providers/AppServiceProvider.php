@@ -12,6 +12,7 @@ use App\Models\Ticket;
 use App\Models\TicketReply;
 use App\Models\User;
 use App\Policies\AttachmentPolicy;
+use App\Policies\AuditLogPolicy;
 use App\Policies\BusinessHourPolicy;
 use App\Policies\HolidayPolicy;
 use App\Policies\ImportPolicy;
@@ -114,6 +115,7 @@ class AppServiceProvider extends ServiceProvider
         // `viewPulse` is the ability Laravel Pulse checks for /pulse.
         Gate::define('viewSystemHealth', [MonitoringPolicy::class, 'view']);
         Gate::define('viewPulse', [MonitoringPolicy::class, 'view']);
+        Gate::define('viewAuditLog', [AuditLogPolicy::class, 'viewAny']);
     }
 
     /**

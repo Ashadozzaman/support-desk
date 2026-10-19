@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\StoreHolidayRequest;
 use App\Models\Holiday;
 use App\Services\SlaService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class HolidayController extends Controller
 {
@@ -18,16 +19,16 @@ class HolidayController extends Controller
     {
         $this->authorize('manage', Holiday::class);
 
-        $this->sla->addHoliday($request->holidayDate(), $request->holidayName());
+        $this->sla->addHoliday($request->holidayDate(), $request->holidayName(), $request->user());
 
         return redirect()->route('admin.business-hours.index');
     }
 
-    public function destroy(Holiday $holiday): RedirectResponse
+    public function destroy(Request $request, Holiday $holiday): RedirectResponse
     {
         $this->authorize('manage', Holiday::class);
 
-        $this->sla->removeHoliday($holiday->id);
+        $this->sla->removeHoliday($holiday, $request->user());
 
         return redirect()->route('admin.business-hours.index');
     }

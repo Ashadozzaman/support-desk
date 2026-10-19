@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AgentController;
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BusinessHourController;
 use App\Http\Controllers\Admin\HolidayController;
 use App\Http\Controllers\Admin\ImportController;
@@ -16,6 +17,10 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::get('system-health', [SystemHealthController::class, 'index'])
         ->middleware('permission:monitoring.view')
         ->name('system-health');
+
+    Route::get('audit-log', [AuditLogController::class, 'index'])
+        ->middleware('permission:audit.view')
+        ->name('audit-log');
 
     Route::get('sla-policies', [SlaPolicyController::class, 'index'])->name('sla-policies.index');
     Route::put('sla-policies', [SlaPolicyController::class, 'update'])->name('sla-policies.update');

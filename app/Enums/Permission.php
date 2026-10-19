@@ -34,6 +34,7 @@ enum Permission: string
     case ReportsViewOwn = 'reports.view-own';
     case ReportsExport = 'reports.export';
     case MonitoringView = 'monitoring.view';
+    case AuditView = 'audit.view';
 
     /**
      * @return list<string>

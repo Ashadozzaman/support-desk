@@ -6,12 +6,15 @@ namespace App\Services;
 
 use App\Contracts\Repositories\SlaConfigRepositoryInterface;
 use App\DTOs\SlaWindowData;
+use App\Enums\AuditEvent;
 use App\Enums\TicketPriority;
 use App\Models\BusinessHour;
 use App\Models\Holiday;
 use App\Models\SlaPolicy;
+use App\Models\User;
 use App\Support\Sla\BusinessHoursCalculator;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -20,6 +23,7 @@ class SlaService
     public function __construct(
         private readonly SlaConfigRepositoryInterface $config,
         private readonly BusinessHoursCalculator $calculator,
+        private readonly AuditLogService $audit,
     ) {}
 
     /**
@@ -68,11 +72,22 @@ class SlaService
     }
 
     /**
+     * The audit row is written inside the same transaction as the change,
+     * so a rolled-back edit leaves no "updated" entry behind.
+     *
      * @param  array<string, array{resolution_minutes: int, warning_threshold_percent: int, is_active: bool}>  $rows
      */
-    public function updatePolicies(array $rows): void
+    public function updatePolicies(array $rows, User $actor): void
     {
-        DB::transaction(fn () => $this->config->updatePolicies($rows));
+        $changes = $this->diff($this->config->policies(), $rows);
+
+        DB::transaction(function () use ($rows, $changes, $actor) {
+            $this->config->updatePolicies($rows);
+
+            if ($changes !== []) {
+                $this->audit->record(AuditEvent::SlaPoliciesUpdated, $actor, properties: ['changes' => $changes]);
+            }
+        });
 
         $this->config->bustCache();
     }
@@ -80,24 +95,71 @@ class SlaService
     /**
      * @param  array<int, array{is_working_day: bool, start_time: ?string, end_time: ?string}>  $rows
      */
-    public function updateBusinessHours(array $rows): void
+    public function updateBusinessHours(array $rows, User $actor): void
     {
-        DB::transaction(fn () => $this->config->updateBusinessHours($rows));
+        $changes = $this->diff($this->config->businessHours()->keyBy('day_of_week'), $rows);
+
+        DB::transaction(function () use ($rows, $changes, $actor) {
+            $this->config->updateBusinessHours($rows);
+
+            if ($changes !== []) {
+                $this->audit->record(AuditEvent::BusinessHoursUpdated, $actor, properties: ['changes' => $changes]);
+            }
+        });
 
         $this->config->bustCache();
     }
 
-    public function addHoliday(string $date, string $name): void
+    public function addHoliday(string $date, string $name, User $actor): void
     {
-        DB::transaction(fn () => $this->config->addHoliday($date, $name));
+        DB::transaction(function () use ($date, $name, $actor) {
+            $this->config->addHoliday($date, $name);
+            $this->audit->record(AuditEvent::HolidayAdded, $actor, properties: ['holiday' => ['date' => $date, 'name' => $name]]);
+        });
 
         $this->config->bustCache();
     }
 
-    public function removeHoliday(int $id): void
+    public function removeHoliday(Holiday $holiday, User $actor): void
     {
-        DB::transaction(fn () => $this->config->removeHoliday($id));
+        DB::transaction(function () use ($holiday, $actor) {
+            $this->config->removeHoliday($holiday->id);
+            $this->audit->record(AuditEvent::HolidayRemoved, $actor, properties: [
+                'holiday' => ['date' => $holiday->date->toDateString(), 'name' => $holiday->name],
+            ]);
+        });
 
         $this->config->bustCache();
+    }
+
+    /**
+     * Field-level old/new for the audit row, only for values that actually
+     * change. "Before" comes from the config cache — safe because this
+     * service is the only writer and busts the cache after every write.
+     * Loose `!=` on purpose: the cache holds raw DB values (1, "09:00:00")
+     * and the form sends typed ones (true, "09:00:00").
+     *
+     * @param  Collection<array-key, Model>  $current
+     * @param  array<array-key, array<string, mixed>>  $rows
+     * @return array<array-key, array{old: array<string, mixed>, new: array<string, mixed>}>
+     */
+    private function diff(Collection $current, array $rows): array
+    {
+        $changes = [];
+
+        foreach ($rows as $key => $attributes) {
+            $before = $current->get($key);
+
+            foreach ($attributes as $field => $value) {
+                $old = $before?->getAttribute($field);
+
+                if ($old != $value) {
+                    $changes[$key]['old'][$field] = $old;
+                    $changes[$key]['new'][$field] = $value;
+                }
+            }
+        }
+
+        return $changes;
     }
 }

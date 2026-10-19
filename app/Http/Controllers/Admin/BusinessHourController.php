@@ -32,7 +32,7 @@ class BusinessHourController extends Controller
     {
         $this->authorize('manage', BusinessHour::class);
 
-        $this->sla->updateBusinessHours($request->toData());
+        $this->sla->updateBusinessHours($request->toData(), $request->user());
 
         return redirect()->route('admin.business-hours.index');
     }

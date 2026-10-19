@@ -8,6 +8,7 @@ use App\Contracts\Assignment\AssignmentStrategy;
 use App\Contracts\Repositories\ActivityRepositoryInterface;
 use App\Contracts\Repositories\AgentRepositoryInterface;
 use App\Contracts\Repositories\AttachmentRepositoryInterface;
+use App\Contracts\Repositories\AuditLogRepositoryInterface;
 use App\Contracts\Repositories\DashboardRepositoryInterface;
 use App\Contracts\Repositories\ImportRepositoryInterface;
 use App\Contracts\Repositories\ReplyRepositoryInterface;
@@ -18,6 +19,7 @@ use App\Contracts\Repositories\TicketRepositoryInterface;
 use App\Repositories\Eloquent\ActivityRepository;
 use App\Repositories\Eloquent\AgentRepository;
 use App\Repositories\Eloquent\AttachmentRepository;
+use App\Repositories\Eloquent\AuditLogRepository;
 use App\Repositories\Eloquent\DashboardRepository;
 use App\Repositories\Eloquent\ImportRepository;
 use App\Repositories\Eloquent\ReplyRepository;
@@ -49,6 +51,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(ImportRepositoryInterface::class, ImportRepository::class);
         $this->app->bind(ReportRepositoryInterface::class, ReportRepository::class);
         $this->app->bind(ReportExportRepositoryInterface::class, ReportExportRepository::class);
+        $this->app->bind(AuditLogRepositoryInterface::class, AuditLogRepository::class);
 
         // Strategy selected from config, not hard-coded (ARCHITECTURE.md §6.2 OCP note).
         $this->app->bind(AssignmentStrategy::class, function (Application $app) {

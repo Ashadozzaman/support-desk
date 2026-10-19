@@ -33,6 +33,12 @@ enum ActivityEvent: string
         return [self::NoteAdded, self::TicketEscalated, self::SlaWarning, self::SlaBreached];
     }
 
+    /** Filter-dropdown label ("Status changed"); timeline lines come from ActivityResource. */
+    public function label(): string
+    {
+        return ucfirst(str_replace(['.', '_'], ' ', $this->value));
+    }
+
     public function isCustomerVisible(): bool
     {
         return ! in_array($this, self::staffOnly(), true);

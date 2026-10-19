@@ -30,7 +30,7 @@ class SlaPolicyController extends Controller
     {
         $this->authorize('manage', SlaPolicy::class);
 
-        $this->sla->updatePolicies($request->toData());
+        $this->sla->updatePolicies($request->toData(), $request->user());
 
         return redirect()->route('admin.sla-policies.index');
     }

@@ -117,4 +117,22 @@ return [
         'queues' => ['sla', 'default', 'notifications', 'broadcasts', 'exports'],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Audit log (Step 19c)
+    |--------------------------------------------------------------------------
+    |
+    | Retention per log, enforced daily by `activitylog:clean <log> --days=`.
+    | auth rows carry IPs/user agents (personal data) and grow fastest, so
+    | they go first; admin changes are few and worth keeping longer. Ticket
+    | activity (ticket_activities) is never deleted — it is each ticket's
+    | timeline and feeds the reports.
+    | page_default_days: the audit page opens on this many days (incl. today).
+    */
+    'audit' => [
+        'auth_retention_days' => (int) env('AUDIT_AUTH_RETENTION_DAYS', 180),
+        'admin_retention_days' => (int) env('AUDIT_ADMIN_RETENTION_DAYS', 1095),
+        'page_default_days' => (int) env('AUDIT_PAGE_DEFAULT_DAYS', 30),
+    ],
+
 ];

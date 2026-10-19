@@ -6,6 +6,7 @@ import {
     FolderGit2,
     HeartPulseIcon,
     LayoutGrid,
+    ScrollTextIcon,
     TicketIcon,
     UploadIcon,
     UsersIcon,
@@ -25,7 +26,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useCan } from '@/hooks/use-can';
 import { dashboard } from '@/routes';
-import { systemHealth } from '@/routes/admin';
+import { auditLog, systemHealth } from '@/routes/admin';
 import { index as agentsIndex } from '@/routes/admin/agents';
 import { index as businessHoursIndex } from '@/routes/admin/business-hours';
 import { index as importsIndex } from '@/routes/admin/imports';
@@ -67,6 +68,7 @@ export function AppSidebar() {
     const canManageUsers = useCan('users.manage');
     const canViewReports = useCan('reports.view') || useCan('reports.view-own');
     const canViewMonitoring = useCan('monitoring.view');
+    const canViewAuditLog = useCan('audit.view');
 
     const mainNavItems: NavItem[] = [
         ...baseNavItems,
@@ -121,6 +123,15 @@ export function AppSidebar() {
                       title: 'System health',
                       href: systemHealth(),
                       icon: HeartPulseIcon,
+                  } satisfies NavItem,
+              ]
+            : []),
+        ...(canViewAuditLog
+            ? [
+                  {
+                      title: 'Audit log',
+                      href: auditLog(),
+                      icon: ScrollTextIcon,
                   } satisfies NavItem,
               ]
             : []),

@@ -5,22 +5,11 @@ import { EmptyState } from '@/components/data/EmptyState';
 import { Pagination } from '@/components/data/Pagination';
 import { DateRangeInput } from '@/components/form/DateRangeInput';
 import { Button } from '@/components/ui/button';
+import { daysBefore } from '@/lib/dates';
 import { dashboard } from '@/routes';
 import { index } from '@/routes/admin/agents';
 import type { AgentPerformanceFilters, AgentPerformanceSummary } from '@/types/agent';
 import type { Paginated } from '@/types/pagination';
-
-/**
- * `today` comes from the server (business timezone), so presets never
- * drift with the admin's browser clock. Plain UTC date maths on the
- * `YYYY-MM-DD` string avoids local-timezone off-by-one days.
- */
-function daysBefore(today: string, days: number): string {
-    const date = new Date(`${today}T00:00:00Z`);
-    date.setUTCDate(date.getUTCDate() - days);
-
-    return date.toISOString().slice(0, 10);
-}
 
 export default function AgentsIndex({
     agents,
