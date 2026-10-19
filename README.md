@@ -40,6 +40,17 @@ npm run dev                # or: npm run build
 php artisan serve
 ```
 
+## Run with Docker
+Full stack (php-fpm, nginx, MySQL 8, Redis, Mailpit, queue + import workers, scheduler, Reverb), each with a healthcheck:
+```bash
+cp .env.docker.example .env.docker
+sed -i "s|^APP_KEY=.*|APP_KEY=base64:$(openssl rand -base64 32)|" .env.docker
+docker compose up -d --build
+docker compose exec app php artisan db:seed --force
+```
+App <http://localhost:8000> · Mailpit <http://localhost:8025> · tests `docker compose run --rm tests`.
+Details (services, why no Supervisor, image stages, troubleshooting): [`docs/DOCKER.md`](docs/DOCKER.md).
+
 ## Background processing (required: queue + scheduler + Reverb)
 ```bash
 php artisan queue:work --queue=sla,default,notifications,broadcasts

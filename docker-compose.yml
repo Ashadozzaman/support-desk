@@ -1,0 +1,198 @@
+# Support Desk — full stack: php-fpm app, nginx, MySQL 8, Redis, Mailpit, queue workers, scheduler, Reverb.
+# Usage: README "Run with Docker".
+
+x-php-build: &php-build
+    context: .
+    dockerfile: docker/php/Dockerfile
+    target: app
+    args:
+        # Compiled into the JS bundle; must match REVERB_APP_KEY in .env.docker.
+        VITE_REVERB_APP_KEY: ${DOCKER_REVERB_APP_KEY:-support-desk-local-key}
+        VITE_REVERB_HOST: localhost
+        VITE_REVERB_PORT: ${REVERB_FORWARD_PORT:-8080}
+        VITE_REVERB_SCHEME: http
+
+x-php: &php
+    image: support-desk-app:local
+    build: *php-build
+    env_file: .env.docker
+    restart: unless-stopped
+    volumes:
+        # Shared so a file uploaded through the app is readable by the import worker (private disk lives here).
+        - storage:/var/www/storage
+    networks:
+        - support-desk
+
+x-after-app: &after-app
+    depends_on:
+        app:
+            condition: service_healthy
+
+services:
+    app:
+        <<: *php
+        environment:
+            RUN_MIGRATIONS: "true"
+        depends_on:
+            mysql:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD-SHELL", "SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            # migrations run before php-fpm starts
+            start_period: 120s
+
+    nginx:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+            target: web
+            args:
+                VITE_REVERB_APP_KEY: ${DOCKER_REVERB_APP_KEY:-support-desk-local-key}
+                VITE_REVERB_HOST: localhost
+                VITE_REVERB_PORT: ${REVERB_FORWARD_PORT:-8080}
+                VITE_REVERB_SCHEME: http
+        image: support-desk-web:local
+        restart: unless-stopped
+        ports:
+            - "${APP_PORT:-8000}:80"
+        depends_on:
+            app:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/up || exit 1"]
+            interval: 15s
+            timeout: 5s
+            retries: 5
+        networks:
+            - support-desk
+
+    # sla, default, notifications, broadcasts, exports — in priority order (docs/QUEUE_SCHEDULER_REALTIME.md §2)
+    queue:
+        <<: [*php, *after-app]
+        command: php artisan queue:work --queue=sla,default,notifications,broadcasts,exports --tries=3 --max-time=3600
+        stop_grace_period: 60s
+        healthcheck:
+            test: ["CMD-SHELL", "pgrep -f 'queue:work' > /dev/null"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+
+    # Own worker so a long CSV import never starves SLA jobs or notifications.
+    imports:
+        <<: [*php, *after-app]
+        command: php artisan queue:work --queue=imports --timeout=3600 --tries=1
+        stop_grace_period: 60s
+        healthcheck:
+            test: ["CMD-SHELL", "pgrep -f 'queue:work' > /dev/null"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+
+    scheduler:
+        <<: [*php, *after-app]
+        command: php artisan schedule:work
+        healthcheck:
+            test: ["CMD-SHELL", "pgrep -f 'schedule:work' > /dev/null"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+
+    reverb:
+        <<: [*php, *after-app]
+        command: php artisan reverb:start --host=0.0.0.0 --port=8080
+        ports:
+            - "${REVERB_FORWARD_PORT:-8080}:8080"
+        healthcheck:
+            test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 8080) ? 0 : 1);"]
+            interval: 15s
+            timeout: 5s
+            retries: 5
+
+    # One-off: docker compose run --rm tests   (Pest against the support_desk_test database)
+    tests:
+        <<: *php
+        profiles: ["test"]
+        restart: "no"
+        volumes: []
+        environment:
+            APP_ENV: testing
+            DB_DATABASE: support_desk_test
+            DB_USERNAME: root
+            DB_PASSWORD: root-secret
+            # Same drivers as .env.testing.example
+            BCRYPT_ROUNDS: 4
+            LOG_STACK: single
+            SESSION_DRIVER: array
+            BROADCAST_CONNECTION: log
+            QUEUE_CONNECTION: sync
+            CACHE_STORE: array
+            MAIL_MAILER: array
+        depends_on:
+            mysql:
+                condition: service_healthy
+        command: sh -c "php artisan optimize:clear > /dev/null && php artisan test --compact"
+
+    mysql:
+        image: mysql:8.4
+        restart: unless-stopped
+        # Local-only credentials; keep in sync with DB_* in .env.docker.
+        environment:
+            MYSQL_DATABASE: support_desk
+            MYSQL_USER: support_desk
+            MYSQL_PASSWORD: secret
+            MYSQL_ROOT_PASSWORD: root-secret
+            TZ: UTC
+        command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+        ports:
+            # 3306 is usually taken by a host MySQL
+            - "${FORWARD_DB_PORT:-3308}:3306"
+        volumes:
+            - mysql-data:/var/lib/mysql
+            - ./docker/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh:ro
+        healthcheck:
+            test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+            start_period: 30s
+        networks:
+            - support-desk
+
+    redis:
+        image: redis:7-alpine
+        restart: unless-stopped
+        volumes:
+            - redis-data:/data
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 3s
+            retries: 5
+        networks:
+            - support-desk
+
+    mailpit:
+        image: axllent/mailpit:latest
+        restart: unless-stopped
+        ports:
+            - "${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025"
+        healthcheck:
+            test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8025/livez"]
+            interval: 15s
+            timeout: 5s
+            retries: 5
+        networks:
+            - support-desk
+
+volumes:
+    storage:
+    mysql-data:
+    redis-data:
+
+networks:
+    support-desk:
