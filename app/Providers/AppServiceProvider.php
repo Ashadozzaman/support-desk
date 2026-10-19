@@ -29,6 +29,9 @@ use App\Support\Health\QueueBacklogCheck;
 use App\Support\Health\ReverbCheck;
 use App\Support\Health\SlaBacklogCheck;
 use Carbon\CarbonImmutable;
+use Dedoc\Scramble\Scramble;
+use Dedoc\Scramble\Support\Generator\OpenApi;
+use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\DevCommands;
@@ -38,6 +41,8 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\Sanctum;
 use Spatie\Health\Checks\Checks\CacheCheck;
 use Spatie\Health\Checks\Checks\DatabaseCheck;
 use Spatie\Health\Checks\Checks\QueueCheck;
@@ -66,6 +71,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDevCommands();
         $this->configureSlowQueryLog();
         $this->configureHealthChecks();
+        $this->configureApi();
     }
 
     /**
@@ -119,6 +125,25 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('viewSystemHealth', [MonitoringPolicy::class, 'view']);
         Gate::define('viewPulse', [MonitoringPolicy::class, 'view']);
         Gate::define('viewAuditLog', [AuditLogPolicy::class, 'viewAny']);
+    }
+
+    /**
+     * REST API (docs/API.md). A deactivated user's tokens stop working at
+     * once — the API equivalent of EnsureUserIsActive ending web sessions.
+     * The OpenAPI document declares bearer auth so the "Try it" panel at
+     * /docs/api sends the token.
+     */
+    protected function configureApi(): void
+    {
+        Sanctum::authenticateAccessTokensUsing(
+            fn (PersonalAccessToken $token, bool $isValid): bool => $isValid
+                && $token->tokenable instanceof User
+                && $token->tokenable->is_active,
+        );
+
+        Scramble::configure()->withDocumentTransformers(function (OpenApi $openApi): void {
+            $openApi->secure(SecurityScheme::http('bearer'));
+        });
     }
 
     /**

@@ -59,6 +59,23 @@ class UserRepository implements UserRepositoryInterface
         $user->forceFill(['email_verified_at' => now()])->save();
     }
 
+    public function findByEmail(string $email): ?User
+    {
+        return User::query()->where('email', $email)->first();
+    }
+
+    public function createApiToken(User $user, string $name): string
+    {
+        return $user->createToken($name)->plainTextToken;
+    }
+
+    public function deleteCurrentApiToken(User $user): void
+    {
+        // Always a PersonalAccessToken: the API accepts bearer tokens only
+        // (no cookie-based `statefulApi()`, which would give a TransientToken).
+        $user->currentAccessToken()->delete();
+    }
+
     public function lockActiveIdsWithPermission(string $permission): array
     {
         // Two steps so the lock covers only the current holders' rows (by

@@ -26,6 +26,8 @@ Schedule::command('health:queue-check-heartbeat')->everyMinute()->onOneServer();
 Schedule::command('queue:prune-batches --hours=48')->daily();
 Schedule::command('queue:prune-failed --hours=168')->daily();
 Schedule::command('model:prune')->daily();
+// Expired API tokens are already rejected; this just keeps the table small.
+Schedule::command('sanctum:prune-expired --hours=24')->daily()->onOneServer();
 // Audit log retention per log (support.audit.*). Daily, so each run deletes
 // about one day's rows — a small range DELETE on INDEX(log_name, created_at).
 Schedule::command('activitylog:clean auth --days='.config('support.audit.auth_retention_days').' --force')->daily()->onOneServer();

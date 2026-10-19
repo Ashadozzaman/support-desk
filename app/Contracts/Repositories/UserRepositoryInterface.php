@@ -38,6 +38,14 @@ interface UserRepositoryInterface
     /** Marks an admin-created account verified — the admin vouches for the address. */
     public function markEmailVerified(User $user): void;
 
+    public function findByEmail(string $email): ?User;
+
+    /** Creates a Sanctum personal access token and returns its plain-text value. */
+    public function createApiToken(User $user, string $name): string;
+
+    /** Deletes the token the current API request was authenticated with. */
+    public function deleteCurrentApiToken(User $user): void;
+
     /**
      * Active users holding `$permission` (via any role or directly), with
      * their rows locked FOR UPDATE until the caller's transaction ends.

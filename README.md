@@ -2,20 +2,28 @@
 
 Laravel + React (Inertia) application for managing support tickets with SLA tracking, business-hours-aware deadlines, escalation, assignment and audit history.
 
-> Template README: fill in the bracketed items as you build. Submission may be rejected without clear setup instructions.
+**For the reviewer — where to look first:**
+[Testing strategy](#testing-strategy--what-i-chose-to-test-and-why) ·
+[Key decisions](#key-decisions) ·
+[EXPLAIN evidence](#explain-evidence) ·
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
+[`docs/CONCURRENT_TICKET_ASSIGNMENT.md`](docs/CONCURRENT_TICKET_ASSIGNMENT.md) ·
+[`docs/SLA.md`](docs/SLA.md) ·
+[`docs/TEST.md`](docs/TEST.md) ·
+[`docs/API.md`](docs/API.md) (REST API, docs at `/docs/api`)
 
 ## Features
 Tickets (CRUD, resolve/close, active vs resolved views) · `TKT-YYYY-NNNNNN` numbering · roles (Admin / Agent / Customer) with policies · manual + automatic assignment · concurrency-safe ticket claim · replies + internal notes · secure attachments · SLA by priority with business hours · scheduled escalation · queued email/database notifications · search & filters · CSV import · dashboard · activity history.
 
 ## Tech stack
-PHP 8.3+, Laravel [version], MySQL 8, React + TypeScript (Laravel React starter kit, Inertia, Tailwind, shadcn/ui), spatie/laravel-permission, Laravel Reverb, Pest.
+PHP 8.3+, Laravel 13, MySQL 8, React + TypeScript (Laravel React starter kit, Inertia, Tailwind, shadcn/ui), spatie/laravel-permission, Laravel Reverb, Pest.
 
 ## Requirements
 PHP 8.3+, Composer, Node 20+, MySQL 8, (optional) Docker.
 
 ## Local setup
 ```bash
-git clone [repo-url] support-desk && cd support-desk
+git clone https://github.com/Ashadozzaman/support-desk.git && cd support-desk
 composer install
 npm install
 cp .env.example .env
@@ -27,14 +35,19 @@ DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=support_desk
-DB_USERNAME=[user]
-DB_PASSWORD=[password]
+DB_USERNAME=root           # your MySQL user
+DB_PASSWORD=               # your MySQL password
 QUEUE_CONNECTION=database
 MAIL_MAILER=log            # or smtp → Mailpit
+SUPPORT_SLA_TIMEZONE=Asia/Dhaka   # business-hours timezone (DB stays UTC)
 ```
+All `SUPPORT_*` settings (SLA warning %, assignment strategy, upload limits, import chunk size, dashboard cache) are listed in `.env.example` and read by `config/support.php`.
+
 Create the database, then:
 ```bash
 php artisan migrate --seed
+# optional, for performance testing only: ~1M tickets (takes a while)
+# php artisan db:seed --class=PerformanceSeeder
 php artisan storage:link   # not needed for attachments (private disk), only for public assets
 npm run dev                # or: npm run build
 php artisan serve
@@ -56,12 +69,12 @@ Sample `Jenkinsfile`: install → configure → lint (Pint, tsc) → test (Pest 
 
 ## Background processing (required: queue + scheduler + Reverb)
 ```bash
-php artisan queue:work --queue=sla,default,notifications,broadcasts
+php artisan queue:work --queue=sla,default,notifications,broadcasts,exports
 php artisan queue:work --queue=imports --timeout=3600   # CSV import worker
 php artisan schedule:work          # local; production cron: * * * * * php artisan schedule:run
 php artisan reverb:start           # real-time notifications (WebSockets)
 ```
-Shortcut: `composer dev:all` runs everything. Add the Reverb variables from `.env.example` (`BROADCAST_CONNECTION=reverb`, `REVERB_*`, `VITE_REVERB_*`).
+Shortcut: `composer dev` runs serve, Vite, the main queue worker, `schedule:work` and Reverb together (`php artisan dev:list` shows them). The import worker is left out on purpose, so run it in its own terminal. Add the Reverb variables from `.env.example` (`BROADCAST_CONNECTION=reverb`, `REVERB_*`, `VITE_REVERB_*`).
 
 | Requirement | Mechanism |
 |---|---|
@@ -77,19 +90,48 @@ Full detail: [`docs/QUEUE_SCHEDULER_REALTIME.md`](docs/QUEUE_SCHEDULER_REALTIME.
 ## Demo accounts (seeded)
 | Role | Email | Password |
 |---|---|---|
-| Admin | admin@example.com | password |
-| Agent | agent1@example.com | password |
-| Customer | customer1@example.com | password |
+| Admin | admin@support-desk.test | password |
+| Agent | agent1@support-desk.test (also agent2, agent3) | password |
+| Customer | customer1@support-desk.test (also customer2–5) | password |
 
 (Local/demo only. No production credentials in the repo.)
 
-## Running tests
+## Testing
+**488 Pest tests, 2085 assertions, all passing** (Unit + Feature + a real Concurrency suite) on MySQL 8.
+Full guide, including how to run a single test: [`docs/TEST.md`](docs/TEST.md).
+
 ```bash
-cp .env.example .env.testing   # point DB_DATABASE to a separate MySQL database
-php artisan test --compact
-./vendor/bin/pint --test
-npx tsc --noEmit
+cp .env.testing.example .env.testing     # separate MySQL DB: support_desk_test
+php artisan key:generate --env=testing
+php artisan test --compact               # everything (~5 min)
+php artisan test --testsuite=Concurrency # the two-agent claim race
+php artisan test tests/Unit/Sla          # one folder
+php artisan test --filter="Thursday 17:00"   # one test by name
+./vendor/bin/pint --test && npx tsc --noEmit
 ```
+
+The tests need MySQL because they rely on FULLTEXT search, row locks (`FOR UPDATE` / `SKIP LOCKED`) and two real connections.
+
+### Testing strategy — what I chose to test and why
+I tested the places where a bug costs the most and where clicking through the app by hand can't catch it:
+
+| Risk | Proven by |
+|---|---|
+| Two agents claim the same ticket | `tests/Concurrency/TicketClaimConcurrencyTest.php`: two OS processes, two MySQL connections, exactly one winner |
+| Wrong SLA deadline (business hours, weekends, holidays, 18:00 boundary) | `tests/Unit/Sla/BusinessHoursCalculatorTest.php`: dataset incl. Thu 17:00 + 120 min → Sun 10:00 |
+| A user sees or does something they shouldn't | `tests/Feature/Rbac/TicketAbilityMatrixTest.php`: role × action × own/other/unassigned |
+| An internal note reaches a customer | `ReplyTest`, `InternalNoteBroadcastSecrecyTest`, `ChannelAuthorizationTest`, `NotificationRecipientsTest` |
+| The same breach is escalated or emailed twice | `tests/Feature/Sla/SlaScanTest.php`: scan run twice → one escalation |
+| Duplicate ticket numbers | `TicketNumberGeneratorTest` (50 creates, year rollover, `reserve(100)`) + unique-index test |
+| Invalid status change | `TicketStatusTransitionTest`: e.g. Closed → Open → 422 |
+| Auto-assign overloads an agent | `LeastWorkloadStrategyTest`: availability, capacity, category skill, tie-break |
+| A bad CSV row fails the import | `TicketImportTest`: invalid rows reported, duplicates skipped |
+| Slow list (N+1) / filter leaks rows | `TicketFilterTest`, `TicketIndexPaginationTest`: query count + visibility under filters |
+
+**Mostly feature tests**, so the whole request path (middleware → policy → service → DB) is proven. **Unit tests** cover pure
+logic with many edge cases. **One concurrency test** covers the claim race, because sequential calls can't prove it.
+**Not tested on purpose:** React components (covered by strict `tsc` + build; the server enforces every rule anyway), and
+Laravel's own auth scaffolding.
 
 ## CSV import
 Admin → Imports → upload CSV. Expected columns: `external_ref, subject, description, priority, category, customer_email, status, created_at` (sample: `docs/samples/tickets-import.csv`). Processing is queued; progress and a downloadable error report are available on the import page.
@@ -108,18 +150,34 @@ Controller → Service → Repository (SOLID, DTOs, enums, spatie RBAC + policie
 
 ### Assumptions
 - SLA durations are **business hours** (Low 48h, Medium 24h, High 8h, Critical 2h), warning at 80 %.
-- Business days Sun–Thu, 09:00–18:00 in `[timezone]`; holidays configurable.
+- Business days Sun–Thu, 09:00–18:00 in `Asia/Dhaka` (`SUPPORT_SLA_TIMEZONE`); hours and holidays are editable by an admin.
 - Priority change recalculates the deadline from ticket creation time.
 - Admin-created accounts are marked email-verified (the admin vouches for the address); the user sets their own password from an emailed reset link.
 - A user is an "agent" when their role has the `tickets.claim` permission and they have an agent profile — not because the role is named `agent`.
 - Roles are editable by admins (`/admin/roles`); permissions are fixed in code. The role/permission table in `docs/ARCHITECTURE.md` §3 is the seeded default. Escalation and new-ticket emails go to everyone with `dashboard.view-global`.
-- [Add your own]
+- `escalated` is a flag (`escalated_at`, `escalation_level`), not a status, so a ticket can be escalated in any status.
+- A customer reply on a *resolved* ticket reopens it; a *closed* ticket is final.
+- The SLA clock does not pause while a ticket is `waiting_for_customer` (design hook only, not in v1).
+- Ticket URLs use `ticket_number`, never the numeric id, so tickets can't be enumerated.
+- Imported tickets get SLA deadlines like normal tickets but don't email customers.
 
 ### EXPLAIN evidence
 [Paste `EXPLAIN` output for: customer list, agent queue, SLA scan, keyword search.]
 
 ## Optional / bonus
-[Docker, API docs, caching, real-time, etc. — list what you actually implemented.]
+Implemented beyond the core requirements:
+- **Real-time (Laravel Reverb):** private channels for the notification bell, live ticket pages and the staff queue. Internal notes broadcast only on `tickets.{n}.staff`.
+- **Docker Compose:** full stack with healthchecks ([`docs/DOCKER.md`](docs/DOCKER.md)). **Jenkins** pipeline sample.
+- **Caching:** SLA policies, business hours and holidays (`rememberForever`, cleared on admin edit); dashboard aggregates (60 s, kept warm by a scheduled job).
+- **Reports:** SLA compliance, response/resolution times (median/p90), agent performance, aging, categories. Backed by a daily rollup table; CSV export (queued when large) and a weekly digest email.
+- **Agents performance pages:** per-agent workload, "stuck" tickets, completed per day, CSV export.
+- **Audit log:** sign-ins, failed logins, and admin changes to SLA, users and roles (`spatie/laravel-activitylog`), with a separate retention period per log.
+- **Admin users & roles editor:** create users, edit roles and permissions, with lockout protection (the last active user who can manage users or roles can't lose that permission).
+- **Observability:** JSON logs with a request id, slow-query log, failed-job alerts, `/health` endpoint, Laravel Pulse.
+- **REST API v1 + OpenAPI docs:** Sanctum bearer tokens, tickets and replies (list/create/update/status/claim/assign, replies, attachment download), reusing the web app's FormRequests, policies and services. Interactive docs generated from the code (Scramble) at `/docs/api` for any signed-in user. Guide: [`docs/API.md`](docs/API.md).
+- **Scale-tested** on a ~1M-ticket database (`PerformanceSeeder`), see EXPLAIN evidence above.
+
+Not done: auto-close of resolved tickets, SLA pause while waiting for the customer, API endpoints for admin screens/reports (see `docs/API.md` §7).
 
 ## Project structure
 See `docs/CODING_STRUCTURE.md`.
