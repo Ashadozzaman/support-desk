@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Monolog\Handler\TestHandler;
 use Tests\TestCase;
@@ -59,4 +61,15 @@ function captureLog(string $channel): TestHandler
     Log::channel($channel)->getLogger()->setHandlers([$handler]);
 
     return $handler;
+}
+
+/**
+ * The asset version Inertia expects in `X-Inertia-Version`, asked from the
+ * middleware itself rather than by hashing public/build/manifest.json: CI runs
+ * the tests before `npm run build`, so the manifest may not exist (the
+ * middleware then has no version, and an empty header matches it).
+ */
+function inertiaVersion(): string
+{
+    return (string) app(HandleInertiaRequests::class)->version(Request::create('/'));
 }

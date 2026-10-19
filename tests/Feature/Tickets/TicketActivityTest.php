@@ -146,7 +146,7 @@ test('a customer timeline hides staff-only events but an agent sees them', funct
         'event' => ActivityEvent::SlaBreached,
     ]);
 
-    $version = hash_file('xxh128', public_path('build/manifest.json'));
+    $version = inertiaVersion();
 
     $customerPage = json_decode(
         $this->actingAs($customer)

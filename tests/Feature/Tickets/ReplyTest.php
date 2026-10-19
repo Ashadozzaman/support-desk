@@ -121,7 +121,7 @@ test('a customer never sees an internal note, its activity, or its attachments',
         ])
         ->assertRedirect();
 
-    $version = hash_file('xxh128', public_path('build/manifest.json'));
+    $version = inertiaVersion();
 
     $response = $this->actingAs($customer)
         ->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => $version])
