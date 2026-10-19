@@ -6,6 +6,7 @@ namespace App\Repositories\Eloquent;
 
 use App\Contracts\Repositories\AgentRepositoryInterface;
 use App\DTOs\AgentPerformanceFilterData;
+use App\Enums\Permission;
 use App\Enums\TicketStatus;
 use App\Models\AgentProfile;
 use App\Models\Ticket;
@@ -64,9 +65,10 @@ class AgentRepository implements AgentRepositoryInterface
                     ->whereColumn('tickets.assigned_agent_id', 'agent_profiles.user_id'),
             ])
             ->where('is_available', true)
-            // A deactivated user keeps their profile (history, performance
-            // page) but must never be picked.
-            ->whereHas('user', fn (Builder $query) => $query->where('is_active', true));
+            // A deactivated user, or one whose role lost tickets.claim (role
+            // edited in the roles editor), keeps their profile (history,
+            // performance page) but must never be picked.
+            ->whereHas('user', fn (Builder $query) => $query->where('is_active', true)->permission(Permission::TicketsClaim->value));
     }
 
     /**

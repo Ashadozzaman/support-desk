@@ -20,6 +20,7 @@ use App\Policies\MonitoringPolicy;
 use App\Policies\ReplyPolicy;
 use App\Policies\ReportExportPolicy;
 use App\Policies\ReportPolicy;
+use App\Policies\RolePolicy;
 use App\Policies\SlaPolicyPolicy;
 use App\Policies\TicketPolicy;
 use App\Policies\UserPolicy;
@@ -43,6 +44,7 @@ use Spatie\Health\Checks\Checks\QueueCheck;
 use Spatie\Health\Checks\Checks\ScheduleCheck;
 use Spatie\Health\Checks\Checks\UsedDiskSpaceCheck;
 use Spatie\Health\Facades\Health;
+use Spatie\Permission\Models\Role;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -106,6 +108,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(BusinessHour::class, BusinessHourPolicy::class);
         Gate::policy(Holiday::class, HolidayPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(Role::class, RolePolicy::class);
 
         Gate::define('viewReports', [ReportPolicy::class, 'viewAny']);
         Gate::define('viewReportTab', [ReportPolicy::class, 'viewTab']);

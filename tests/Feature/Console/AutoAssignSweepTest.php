@@ -2,21 +2,28 @@
 
 declare(strict_types=1);
 
+use App\Enums\Role as RoleEnum;
 use App\Enums\TicketStatus;
 use App\Jobs\AutoAssignTicketJob;
 use App\Models\AgentProfile;
 use App\Models\Category;
 use App\Models\Ticket;
 use App\Models\User;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+});
+
 function sweepAgent(int $maxActive, array $categoryIds = [], bool $available = true): User
 {
     $agent = User::factory()->create();
+    $agent->assignRole(RoleEnum::Agent->value);
     AgentProfile::factory()->create([
         'user_id' => $agent->id,
         'max_active_tickets' => $maxActive,

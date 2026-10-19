@@ -7,8 +7,8 @@ namespace App\Services;
 use App\Contracts\Assignment\AssignmentStrategy;
 use App\Contracts\Repositories\AgentRepositoryInterface;
 use App\Contracts\Repositories\TicketRepositoryInterface;
+use App\Contracts\Repositories\UserRepositoryInterface;
 use App\Enums\ActivityEvent;
-use App\Enums\Role;
 use App\Events\TicketAssigned;
 use App\Exceptions\TicketAlreadyAssignedException;
 use App\Jobs\AutoAssignTicketJob;
@@ -27,6 +27,7 @@ class TicketAssignmentService
         private readonly ActivityLogService $activity,
         private readonly AssignmentStrategy $strategy,
         private readonly AgentRepositoryInterface $agents,
+        private readonly UserRepositoryInterface $users,
     ) {}
 
     /**
@@ -65,7 +66,7 @@ class TicketAssignmentService
 
     /**
      * Admin manual assign/reassign (ARCHITECTURE.md §6.1). agentId is
-     * validated by AssignTicketRequest (active, has an agent profile) —
+     * validated by AssignTicketRequest (active, agent profile, tickets.claim) —
      * same precedent as TicketService::categoryOptions() for the lookup.
      */
     public function assign(Ticket $ticket, int $agentId, User $actor): Ticket
@@ -187,17 +188,13 @@ class TicketAssignmentService
     }
 
     /**
-     * Active agents for the AssignAgentDialog dropdown. Direct, read-only
-     * model query — same precedent as TicketService::categoryOptions()
-     * (no dedicated UserRepository exists for this phase).
+     * Agents for the AssignAgentDialog dropdown: active, with an agent
+     * profile and `tickets.claim` — the same rule auto-assign uses.
      *
      * @return Collection<int, User>
      */
     public function agentOptions(): Collection
     {
-        return User::role(Role::Agent->value)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        return $this->users->assignableAgents();
     }
 }

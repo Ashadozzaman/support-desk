@@ -31,6 +31,9 @@ enum AuditEvent: string
     case HolidayRemoved = 'admin.holiday_removed';
     case UserCreated = 'admin.user_created';
     case UserUpdated = 'admin.user_updated';
+    case RoleCreated = 'admin.role_created';
+    case RoleUpdated = 'admin.role_updated';
+    case RoleDeleted = 'admin.role_deleted';
 
     public const LOG_AUTH = 'auth';
 
@@ -65,6 +68,9 @@ enum AuditEvent: string
             self::HolidayRemoved => 'Holiday removed',
             self::UserCreated => 'User created',
             self::UserUpdated => 'User updated',
+            self::RoleCreated => 'Role created',
+            self::RoleUpdated => 'Role updated',
+            self::RoleDeleted => 'Role deleted',
         };
     }
 

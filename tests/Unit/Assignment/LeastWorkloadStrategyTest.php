@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Assignment;
 
+use App\Enums\Role as RoleEnum;
 use App\Enums\TicketStatus;
 use App\Models\AgentProfile;
 use App\Models\Category;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Support\Assignment\LeastWorkloadStrategy;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,9 +19,17 @@ class LeastWorkloadStrategyTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(RolesAndPermissionsSeeder::class);
+    }
+
     private function createAgent(array $profileAttributes = []): User
     {
         $agent = User::factory()->create();
+        // Candidates must hold tickets.claim (Step 19e), not just a profile.
+        $agent->assignRole(RoleEnum::Agent->value);
         AgentProfile::factory()->create([...$profileAttributes, 'user_id' => $agent->id]);
 
         return $agent;

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Contracts\Repositories\UserRepositoryInterface;
 use App\Enums\Permission;
-use App\Enums\Role;
 use App\Events\ReplyAdded;
 use App\Models\User;
 use App\Notifications\ReplyReceived;
@@ -20,6 +20,8 @@ class SendReplyAddedNotifications implements ShouldQueue
 {
     public string $queue = 'notifications';
 
+    public function __construct(private readonly UserRepositoryInterface $users) {}
+
     public function handle(ReplyAdded $event): void
     {
         $author = $event->reply->user;
@@ -30,7 +32,7 @@ class SendReplyAddedNotifications implements ShouldQueue
             ? collect([$ticket->creator])
             : ($ticket->assigned_agent_id !== null
                 ? collect([$ticket->assignedAgent])
-                : User::role(Role::Admin->value)->get());
+                : $this->users->activeWithPermissions(Permission::DashboardViewGlobal->value));
 
         $recipients = $recipients->filter()->unique('id')->reject(fn (User $user) => $user->id === $author->id);
 

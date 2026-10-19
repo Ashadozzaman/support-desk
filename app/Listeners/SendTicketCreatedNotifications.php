@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Enums\Role;
+use App\Contracts\Repositories\UserRepositoryInterface;
+use App\Enums\Permission;
 use App\Events\TicketCreated;
-use App\Models\User;
 use App\Notifications\TicketCreated as TicketCreatedNotification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
@@ -19,9 +19,13 @@ class SendTicketCreatedNotifications implements ShouldQueue
 {
     public string $queue = 'notifications';
 
+    public function __construct(private readonly UserRepositoryInterface $users) {}
+
     public function handle(TicketCreated $event): void
     {
-        $recipients = User::role(Role::Admin->value)->get()->push($event->ticket->creator)->unique('id');
+        $recipients = $this->users->activeWithPermissions(Permission::DashboardViewGlobal->value)
+            ->push($event->ticket->creator)
+            ->unique('id');
 
         NotificationFacade::send($recipients, new TicketCreatedNotification($event->ticket));
     }

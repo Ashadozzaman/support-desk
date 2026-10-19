@@ -9,7 +9,7 @@ use App\Contracts\Repositories\TicketRepositoryInterface;
 use App\DTOs\CreateTicketData;
 use App\Enums\ActivityEvent;
 use App\Enums\ImportStatus;
-use App\Enums\Role;
+use App\Enums\Permission;
 use App\Enums\TicketPriority;
 use App\Events\ImportProgressUpdated;
 use App\Models\Category;
@@ -210,11 +210,10 @@ class ProcessTicketImportJob implements ShouldQueue
             fn (array $row) => trim((string) ($row['raw']['customer_email'] ?? '')),
             $rows,
         ))));
-        $customersByEmail = User::query()
+        // "Customer" = can hold their own tickets, whatever the role is called.
+        $customersByEmail = User::permission(Permission::TicketsViewOwn->value)
             ->whereIn('email', $emails)
-            ->with('roles')
             ->get()
-            ->filter(fn (User $user) => $user->roles->contains('name', Role::Customer->value))
             ->keyBy('email');
 
         $validRows = [];

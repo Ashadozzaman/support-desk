@@ -14,6 +14,7 @@ use App\Contracts\Repositories\ImportRepositoryInterface;
 use App\Contracts\Repositories\ReplyRepositoryInterface;
 use App\Contracts\Repositories\ReportExportRepositoryInterface;
 use App\Contracts\Repositories\ReportRepositoryInterface;
+use App\Contracts\Repositories\RoleRepositoryInterface;
 use App\Contracts\Repositories\SlaConfigRepositoryInterface;
 use App\Contracts\Repositories\TicketRepositoryInterface;
 use App\Contracts\Repositories\UserRepositoryInterface;
@@ -26,6 +27,7 @@ use App\Repositories\Eloquent\ImportRepository;
 use App\Repositories\Eloquent\ReplyRepository;
 use App\Repositories\Eloquent\ReportExportRepository;
 use App\Repositories\Eloquent\ReportRepository;
+use App\Repositories\Eloquent\RoleRepository;
 use App\Repositories\Eloquent\SlaConfigRepository;
 use App\Repositories\Eloquent\TicketRepository;
 use App\Repositories\Eloquent\UserRepository;
@@ -55,6 +57,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(ReportExportRepositoryInterface::class, ReportExportRepository::class);
         $this->app->bind(AuditLogRepositoryInterface::class, AuditLogRepository::class);
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
+        $this->app->bind(RoleRepositoryInterface::class, RoleRepository::class);
 
         // Strategy selected from config, not hard-coded (ARCHITECTURE.md §6.2 OCP note).
         $this->app->bind(AssignmentStrategy::class, function (Application $app) {

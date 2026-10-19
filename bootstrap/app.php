@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\InvalidStatusTransitionException;
+use App\Exceptions\ProtectedRoleException;
 use App\Exceptions\TicketAlreadyAssignedException;
 use App\Exceptions\UserLockoutException;
 use App\Http\Controllers\HealthController;
@@ -99,6 +100,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // A form error on the field that caused it, not a bare 422 page.
         $exceptions->map(UserLockoutException::class, fn (UserLockoutException $e) => ValidationException::withMessages([
+            $e->field => $e->getMessage(),
+        ]));
+        $exceptions->map(ProtectedRoleException::class, fn (ProtectedRoleException $e) => ValidationException::withMessages([
             $e->field => $e->getMessage(),
         ]));
 

@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Contracts\Repositories\TicketRepositoryInterface;
+use App\Contracts\Repositories\UserRepositoryInterface;
 use App\DTOs\CreateTicketData;
 use App\DTOs\TicketFilterData;
 use App\DTOs\UpdateTicketData;
 use App\Enums\ActivityEvent;
-use App\Enums\Role;
+use App\Enums\Permission;
 use App\Enums\TicketStatus;
 use App\Events\TicketCreated;
 use App\Events\TicketResolved;
@@ -31,6 +32,7 @@ class TicketService
         private readonly ActivityLogService $activity,
         private readonly SlaService $sla,
         private readonly TicketMetricsService $metrics,
+        private readonly UserRepositoryInterface $users,
     ) {}
 
     public function create(CreateTicketData $data, User $actor): Ticket
@@ -177,14 +179,13 @@ class TicketService
     }
 
     /**
-     * Customers for the admin "created by" filter — same precedent as
-     * categoryOptions()/TicketAssignmentService::agentOptions() (direct,
-     * read-only model query; no dedicated UserRepository exists for this).
+     * Customers for the admin "created by" filter: anyone who can hold their
+     * own tickets (`tickets.view-own`), whatever their role is called.
      *
      * @return Collection<int, User>
      */
     public function customerOptions(): Collection
     {
-        return User::role(Role::Customer->value)->orderBy('name')->get(['id', 'name']);
+        return $this->users->optionsWithPermission(Permission::TicketsViewOwn->value);
     }
 }

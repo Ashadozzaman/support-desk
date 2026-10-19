@@ -9,6 +9,7 @@ import {
     ScrollTextIcon,
     TicketIcon,
     UploadIcon,
+    ShieldCheckIcon,
     UserCogIcon,
     UsersIcon,
 } from 'lucide-react';
@@ -32,6 +33,7 @@ import { index as agentsIndex } from '@/routes/admin/agents';
 import { index as businessHoursIndex } from '@/routes/admin/business-hours';
 import { index as importsIndex } from '@/routes/admin/imports';
 import { index as reportsIndex } from '@/routes/reports';
+import { index as rolesIndex } from '@/routes/admin/roles';
 import { index as slaPoliciesIndex } from '@/routes/admin/sla-policies';
 import { index as usersIndex } from '@/routes/admin/users';
 import { index as ticketsIndex } from '@/routes/tickets';
@@ -68,6 +70,7 @@ export function AppSidebar() {
     const canManageBusinessHours = useCan('business-hours.manage');
     const canManageImports = useCan('imports.manage');
     const canManageUsers = useCan('users.manage');
+    const canManageRoles = useCan('roles.manage');
     const canViewReports = useCan('reports.view') || useCan('reports.view-own');
     const canViewMonitoring = useCan('monitoring.view');
     const canViewAuditLog = useCan('audit.view');
@@ -94,6 +97,15 @@ export function AppSidebar() {
                       title: 'Agents',
                       href: agentsIndex(),
                       icon: UsersIcon,
+                  } satisfies NavItem,
+              ]
+            : []),
+        ...(canManageRoles
+            ? [
+                  {
+                      title: 'Roles',
+                      href: rolesIndex(),
+                      icon: ShieldCheckIcon,
                   } satisfies NavItem,
               ]
             : []),

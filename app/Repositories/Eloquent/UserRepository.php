@@ -6,6 +6,7 @@ namespace App\Repositories\Eloquent;
 
 use App\Contracts\Repositories\UserRepositoryInterface;
 use App\DTOs\UserFilterData;
+use App\Enums\Permission;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -79,6 +80,31 @@ class UserRepository implements UserRepositoryInterface
     public function roleGrants(string $role, string $permission): bool
     {
         return Role::findByName($role, 'web')->hasPermissionTo($permission);
+    }
+
+    public function activeWithPermissions(string ...$permissions): Collection
+    {
+        $query = User::query()->where('is_active', true);
+
+        foreach ($permissions as $permission) {
+            $query->permission($permission);
+        }
+
+        return $query->get();
+    }
+
+    public function optionsWithPermission(string $permission): Collection
+    {
+        return User::permission($permission)->orderBy('name')->get(['id', 'name']);
+    }
+
+    public function assignableAgents(): Collection
+    {
+        return User::permission(Permission::TicketsClaim->value)
+            ->where('is_active', true)
+            ->has('agentProfile')
+            ->orderBy('name')
+            ->get(['id', 'name']);
     }
 
     public function roles(): Collection

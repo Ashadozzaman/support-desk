@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Enums\Permission;
-use App\Enums\Role;
 use App\Models\User;
 
 class UserPolicy
@@ -32,13 +31,13 @@ class UserPolicy
     }
 
     /**
-     * Permission check (admin-only, same gate as the list) plus a role
-     * check — the performance page only makes sense for an agent, so a
-     * customer/admin id in the URL is denied rather than rendering an
-     * empty page.
+     * Permission check (same gate as the list) plus "is an agent" — has an
+     * agent profile, the same source the list is built from, so a demoted
+     * agent's history stays reachable. A customer/admin id in the URL is
+     * denied rather than rendering an empty page.
      */
     public function viewPerformance(User $viewer, User $agent): bool
     {
-        return $viewer->can(Permission::UsersManage->value) && $agent->hasRole(Role::Agent->value);
+        return $viewer->can(Permission::UsersManage->value) && $agent->agentProfile()->exists();
     }
 }

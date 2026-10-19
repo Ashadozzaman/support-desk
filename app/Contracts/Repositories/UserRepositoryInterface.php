@@ -49,6 +49,30 @@ interface UserRepositoryInterface
     public function roleGrants(string $role, string $permission): bool;
 
     /**
+     * Active users holding every one of `$permissions` — notification
+     * recipients are chosen by permission, never by role name (Step 19e).
+     *
+     * @return Collection<int, User>
+     */
+    public function activeWithPermissions(string ...$permissions): Collection;
+
+    /**
+     * id + name of users holding `$permission`, ordered by name — inactive
+     * ones too, since their old tickets can still be filtered on.
+     *
+     * @return Collection<int, User>
+     */
+    public function optionsWithPermission(string $permission): Collection;
+
+    /**
+     * Active users who can be given tickets: an agent profile and
+     * `tickets.claim` (assign dialog).
+     *
+     * @return Collection<int, User>
+     */
+    public function assignableAgents(): Collection;
+
+    /**
      * Every role with its permission names loaded.
      *
      * @return Collection<int, Role>

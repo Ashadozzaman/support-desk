@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Enums\Role;
+use App\Contracts\Repositories\UserRepositoryInterface;
+use App\Enums\Permission;
 use App\Events\SlaWarningTriggered;
-use App\Models\User;
 use App\Notifications\SlaWarning;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Notification;
@@ -18,10 +18,12 @@ class SendSlaWarningNotifications implements ShouldQueue
 {
     public string $queue = 'notifications';
 
+    public function __construct(private readonly UserRepositoryInterface $users) {}
+
     public function handle(SlaWarningTriggered $event): void
     {
         $recipients = collect([$event->ticket->assignedAgent])
-            ->merge(User::role(Role::Admin->value)->get())
+            ->merge($this->users->activeWithPermissions(Permission::DashboardViewGlobal->value))
             ->filter()
             ->unique('id');
 

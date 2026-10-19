@@ -61,9 +61,19 @@ class RolesAndPermissionsSeeder extends Seeder
         $agent = Role::firstOrCreate(['name' => RoleEnum::Agent->value, 'guard_name' => 'web']);
         $customer = Role::firstOrCreate(['name' => RoleEnum::Customer->value, 'guard_name' => 'web']);
 
+        // Admin always holds every permission (the roles editor can't change it).
+        // Agent/customer get their defaults only when first created: after that
+        // an admin owns them in the roles editor (Step 19e), and a re-run must
+        // not silently undo those edits.
         $admin->syncPermissions(PermissionEnum::values());
-        $agent->syncPermissions(array_map(fn (PermissionEnum $p) => $p->value, self::AGENT_PERMISSIONS));
-        $customer->syncPermissions(array_map(fn (PermissionEnum $p) => $p->value, self::CUSTOMER_PERMISSIONS));
+
+        if ($agent->wasRecentlyCreated) {
+            $agent->syncPermissions(array_map(fn (PermissionEnum $p) => $p->value, self::AGENT_PERMISSIONS));
+        }
+
+        if ($customer->wasRecentlyCreated) {
+            $customer->syncPermissions(array_map(fn (PermissionEnum $p) => $p->value, self::CUSTOMER_PERMISSIONS));
+        }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
