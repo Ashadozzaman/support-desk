@@ -42,6 +42,20 @@ interface AgentRepositoryInterface
     public function touchLastAssigned(AgentProfile $profile): void;
 
     /**
+     * Creates or updates the user's agent profile (admin user form).
+     * `last_assigned_at` is left alone so round-robin order survives edits.
+     */
+    public function saveProfile(int $userId, bool $isAvailable, int $maxActiveTickets): AgentProfile;
+
+    /** Stops auto-assign picking the user, keeping their profile and history. */
+    public function markUnavailable(int $userId): void;
+
+    /**
+     * @param  list<int>  $categoryIds  empty = no restriction (handles every category)
+     */
+    public function syncCategories(int $userId, array $categoryIds): void;
+
+    /**
      * One page of agent profiles ordered by name (every agent, even one
      * with zero tickets ever — unlike DashboardRepository::byAgent()), each
      * with live workload counts (active/open/in_progress/waiting/stuck, as

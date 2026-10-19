@@ -2,8 +2,10 @@
 
 use App\Exceptions\InvalidStatusTransitionException;
 use App\Exceptions\TicketAlreadyAssignedException;
+use App\Exceptions\UserLockoutException;
 use App\Http\Controllers\HealthController;
 use App\Http\Middleware\AssignRequestContext;
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireHealthSecret;
@@ -15,6 +17,7 @@ use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Exceptions\UnauthorizedException;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
@@ -42,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             AssignRequestContext::class,
+            EnsureUserIsActive::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
@@ -92,6 +96,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (InvalidStatusTransitionException $e, Request $request) {
             return response()->json(['message' => $e->getMessage()], 422);
         });
+
+        // A form error on the field that caused it, not a bare 422 page.
+        $exceptions->map(UserLockoutException::class, fn (UserLockoutException $e) => ValidationException::withMessages([
+            $e->field => $e->getMessage(),
+        ]));
 
         $exceptions->render(function (TicketAlreadyAssignedException $e, Request $request) {
             return response()->json(['message' => $e->getMessage()], 409);

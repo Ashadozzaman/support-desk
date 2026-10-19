@@ -29,6 +29,8 @@ enum AuditEvent: string
     case BusinessHoursUpdated = 'admin.business_hours_updated';
     case HolidayAdded = 'admin.holiday_added';
     case HolidayRemoved = 'admin.holiday_removed';
+    case UserCreated = 'admin.user_created';
+    case UserUpdated = 'admin.user_updated';
 
     public const LOG_AUTH = 'auth';
 
@@ -61,6 +63,8 @@ enum AuditEvent: string
             self::BusinessHoursUpdated => 'Business hours updated',
             self::HolidayAdded => 'Holiday added',
             self::HolidayRemoved => 'Holiday removed',
+            self::UserCreated => 'User created',
+            self::UserUpdated => 'User updated',
         };
     }
 

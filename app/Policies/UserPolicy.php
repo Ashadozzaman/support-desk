@@ -10,6 +10,22 @@ use App\Models\User;
 
 class UserPolicy
 {
+    /** Admin Users page (Step 19d). Lockout rules live in UserManagementService. */
+    public function viewAny(User $viewer): bool
+    {
+        return $viewer->can(Permission::UsersManage->value);
+    }
+
+    public function create(User $viewer): bool
+    {
+        return $viewer->can(Permission::UsersManage->value);
+    }
+
+    public function update(User $viewer, User $user): bool
+    {
+        return $viewer->can(Permission::UsersManage->value);
+    }
+
     public function viewAnyPerformance(User $viewer): bool
     {
         return $viewer->can(Permission::UsersManage->value);

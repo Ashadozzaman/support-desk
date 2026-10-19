@@ -9,6 +9,7 @@ import {
     ScrollTextIcon,
     TicketIcon,
     UploadIcon,
+    UserCogIcon,
     UsersIcon,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
@@ -32,6 +33,7 @@ import { index as businessHoursIndex } from '@/routes/admin/business-hours';
 import { index as importsIndex } from '@/routes/admin/imports';
 import { index as reportsIndex } from '@/routes/reports';
 import { index as slaPoliciesIndex } from '@/routes/admin/sla-policies';
+import { index as usersIndex } from '@/routes/admin/users';
 import { index as ticketsIndex } from '@/routes/tickets';
 import type { NavItem } from '@/types';
 
@@ -83,6 +85,11 @@ export function AppSidebar() {
             : []),
         ...(canManageUsers
             ? [
+                  {
+                      title: 'Users',
+                      href: usersIndex(),
+                      icon: UserCogIcon,
+                  } satisfies NavItem,
                   {
                       title: 'Agents',
                       href: agentsIndex(),

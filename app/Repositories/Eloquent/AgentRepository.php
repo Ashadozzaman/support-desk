@@ -9,6 +9,7 @@ use App\DTOs\AgentPerformanceFilterData;
 use App\Enums\TicketStatus;
 use App\Models\AgentProfile;
 use App\Models\Ticket;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -62,7 +63,10 @@ class AgentRepository implements AgentRepositoryInterface
                     ->active()
                     ->whereColumn('tickets.assigned_agent_id', 'agent_profiles.user_id'),
             ])
-            ->where('is_available', true);
+            ->where('is_available', true)
+            // A deactivated user keeps their profile (history, performance
+            // page) but must never be picked.
+            ->whereHas('user', fn (Builder $query) => $query->where('is_active', true));
     }
 
     /**
@@ -89,6 +93,24 @@ class AgentRepository implements AgentRepositoryInterface
     public function touchLastAssigned(AgentProfile $profile): void
     {
         $profile->update(['last_assigned_at' => now()]);
+    }
+
+    public function saveProfile(int $userId, bool $isAvailable, int $maxActiveTickets): AgentProfile
+    {
+        return AgentProfile::updateOrCreate(
+            ['user_id' => $userId],
+            ['is_available' => $isAvailable, 'max_active_tickets' => $maxActiveTickets],
+        );
+    }
+
+    public function markUnavailable(int $userId): void
+    {
+        AgentProfile::query()->where('user_id', $userId)->update(['is_available' => false]);
+    }
+
+    public function syncCategories(int $userId, array $categoryIds): void
+    {
+        User::query()->findOrFail($userId)->categories()->sync($categoryIds);
     }
 
     public function paginatePerformance(AgentPerformanceFilterData $filters, int $perPage): LengthAwarePaginator

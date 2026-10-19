@@ -7,12 +7,21 @@ use App\Http\Controllers\Admin\HolidayController;
 use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\Admin\SlaPolicyController;
 use App\Http\Controllers\Admin\SystemHealthController;
+use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('agents', [AgentController::class, 'index'])->name('agents.index');
     Route::get('agents/{agent}', [AgentController::class, 'show'])->name('agents.show');
     Route::get('agents/{agent}/daily-export', [AgentController::class, 'dailyExport'])->name('agents.daily-export');
+
+    Route::middleware('permission:users.manage')->group(function () {
+        Route::get('users', [UserController::class, 'index'])->name('users.index');
+        Route::get('users/create', [UserController::class, 'create'])->name('users.create');
+        Route::post('users', [UserController::class, 'store'])->name('users.store');
+        Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
+    });
 
     Route::get('system-health', [SystemHealthController::class, 'index'])
         ->middleware('permission:monitoring.view')

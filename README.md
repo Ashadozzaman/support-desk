@@ -96,6 +96,8 @@ Controller → Service → Repository (SOLID, DTOs, enums, spatie RBAC + policie
 - SLA durations are **business hours** (Low 48h, Medium 24h, High 8h, Critical 2h), warning at 80 %.
 - Business days Sun–Thu, 09:00–18:00 in `[timezone]`; holidays configurable.
 - Priority change recalculates the deadline from ticket creation time.
+- Admin-created accounts are marked email-verified (the admin vouches for the address); the user sets their own password from an emailed reset link.
+- A user is an "agent" when their role has the `tickets.claim` permission and they have an agent profile — not because the role is named `agent`.
 - [Add your own]
 
 ### EXPLAIN evidence
