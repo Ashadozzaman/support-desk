@@ -13,6 +13,7 @@ use App\Enums\ChatAssistant;
 use App\Enums\ChatMessageRole;
 use App\Enums\Permission;
 use App\Enums\TicketPriority;
+use App\Enums\TicketSource;
 use App\Exceptions\AiProviderException;
 use App\Exceptions\AiUnavailableException;
 use App\Exceptions\ChatNotActiveException;
@@ -153,6 +154,7 @@ class SupportChatService
                 priority: TicketPriority::Medium,
                 categoryId: null,
                 createdBy: $customer->id,
+                source: TicketSource::Chat,
             ), $customer);
 
             $this->chats->attachTicket($session, $ticket->id);

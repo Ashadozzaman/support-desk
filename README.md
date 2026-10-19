@@ -153,6 +153,7 @@ Controller → Service → Repository (SOLID, DTOs, enums, spatie RBAC + policie
 - Business days Sun–Thu, 09:00–18:00 in `Asia/Dhaka` (`SUPPORT_SLA_TIMEZONE`); hours and holidays are editable by an admin.
 - Priority change recalculates the deadline from ticket creation time.
 - Admin-created accounts are marked email-verified (the admin vouches for the address); the user sets their own password from an emailed reset link.
+- Email-to-ticket (Step 25, `docs/IMAP.md`): an email from an unknown address creates an unverified customer account and **no email is sent to it** (the From address can be forged); email tickets start at Medium priority with no category; a reply threads only onto the sender's own ticket, and a reply to a closed ticket starts a new one.
 - A user is an "agent" when their role has the `tickets.claim` permission and they have an agent profile — not because the role is named `agent`.
 - Roles are editable by admins (`/admin/roles`); permissions are fixed in code. The role/permission table in `docs/ARCHITECTURE.md` §3 is the seeded default. Escalation and new-ticket emails go to everyone with `dashboard.view-global`.
 - `escalated` is a flag (`escalated_at`, `escalation_level`), not a status, so a ticket can be escalated in any status.

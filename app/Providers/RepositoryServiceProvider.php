@@ -14,6 +14,7 @@ use App\Contracts\Repositories\AuditLogRepositoryInterface;
 use App\Contracts\Repositories\ChatRepositoryInterface;
 use App\Contracts\Repositories\DashboardRepositoryInterface;
 use App\Contracts\Repositories\ImportRepositoryInterface;
+use App\Contracts\Repositories\InboundMessageRepositoryInterface;
 use App\Contracts\Repositories\KnowledgeBaseRepositoryInterface;
 use App\Contracts\Repositories\ReplyRepositoryInterface;
 use App\Contracts\Repositories\ReportExportRepositoryInterface;
@@ -30,6 +31,7 @@ use App\Repositories\Eloquent\AuditLogRepository;
 use App\Repositories\Eloquent\ChatRepository;
 use App\Repositories\Eloquent\DashboardRepository;
 use App\Repositories\Eloquent\ImportRepository;
+use App\Repositories\Eloquent\InboundMessageRepository;
 use App\Repositories\Eloquent\KnowledgeBaseRepository;
 use App\Repositories\Eloquent\ReplyRepository;
 use App\Repositories\Eloquent\ReportExportRepository;
@@ -71,6 +73,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(KnowledgeBaseRepositoryInterface::class, KnowledgeBaseRepository::class);
         $this->app->bind(AiInteractionRepositoryInterface::class, AiInteractionRepository::class);
         $this->app->bind(ChatRepositoryInterface::class, ChatRepository::class);
+        $this->app->bind(InboundMessageRepositoryInterface::class, InboundMessageRepository::class);
 
         // Strategy selected from config, not hard-coded (ARCHITECTURE.md §6.2 OCP note).
         $this->app->bind(AssignmentStrategy::class, function (Application $app) {

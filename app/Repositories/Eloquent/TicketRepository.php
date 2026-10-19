@@ -37,6 +37,7 @@ class TicketRepository implements TicketRepositoryInterface
             'category_id' => $data->categoryId,
             'created_by' => $data->createdBy,
             'external_ref' => $data->externalRef,
+            'source' => $data->source,
             'sla_due_at' => $slaDueAt,
             'sla_warning_at' => $slaWarningAt,
         ]);
@@ -45,6 +46,11 @@ class TicketRepository implements TicketRepositoryInterface
     public function findByNumberOrFail(string $ticketNumber): Ticket
     {
         return Ticket::where('ticket_number', $ticketNumber)->firstOrFail();
+    }
+
+    public function findByNumber(string $ticketNumber): ?Ticket
+    {
+        return Ticket::where('ticket_number', $ticketNumber)->first();
     }
 
     /**

@@ -21,6 +21,8 @@ interface TicketRepositoryInterface
 
     public function findByNumberOrFail(string $ticketNumber): Ticket;
 
+    public function findByNumber(string $ticketNumber): ?Ticket;
+
     /**
      * @return LengthAwarePaginator<int, Ticket>
      */
