@@ -14,7 +14,7 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { assign } from '@/routes/tickets';
-import type { AgentOption } from '@/types/ticket';
+import type { AssignableAgent } from '@/types/ticket';
 
 export function AssignAgentDialog({
     ticketNumber,
@@ -22,7 +22,7 @@ export function AssignAgentDialog({
     reassign = false,
 }: {
     ticketNumber: string;
-    agents: AgentOption[];
+    agents: AssignableAgent[];
     reassign?: boolean;
 }) {
     const [open, setOpen] = useState(false);
@@ -50,7 +50,10 @@ export function AssignAgentDialog({
                 <form onSubmit={submit}>
                     <DialogHeader>
                         <DialogTitle>{reassign ? 'Reassign ticket' : 'Assign ticket'}</DialogTitle>
-                        <DialogDescription>Choose an agent to hand this ticket to.</DialogDescription>
+                        <DialogDescription>
+                            Choose an agent to hand this ticket to. Each shows their active tickets against their
+                            capacity.
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
                         <AgentSelect

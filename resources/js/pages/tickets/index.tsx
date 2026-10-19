@@ -9,7 +9,7 @@ import { useStaffQueue } from '@/hooks/use-staff-queue';
 import { dashboard } from '@/routes';
 import { create, index } from '@/routes/tickets';
 import type { Paginated } from '@/types/pagination';
-import type { AgentOption, CategoryOption, TicketListItem } from '@/types/ticket';
+import type { AgentOption, AssignableAgent, CategoryOption, TicketListItem } from '@/types/ticket';
 
 type Tab = 'active' | 'resolved';
 
@@ -37,6 +37,7 @@ export default function TicketsIndex({
     filters,
     categories,
     agents,
+    assignableAgents,
     customers,
 }: {
     tickets: Paginated<TicketListItem>;
@@ -44,6 +45,7 @@ export default function TicketsIndex({
     filters: RawFilters;
     categories: CategoryOption[];
     agents: AgentOption[];
+    assignableAgents: { data: AssignableAgent[] };
     customers: AgentOption[];
 }) {
     useStaffQueue(['tickets']);
@@ -123,7 +125,7 @@ export default function TicketsIndex({
                     />
                 ) : (
                     <>
-                        <TicketTable tickets={tickets.data} agents={agents} />
+                        <TicketTable tickets={tickets.data} agents={assignableAgents.data} />
                         <Pagination meta={tickets.meta} />
                     </>
                 )}

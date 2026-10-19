@@ -107,6 +107,20 @@ class UserRepository implements UserRepositoryInterface
             ->get(['id', 'name']);
     }
 
+    public function assignableAgentsWithWorkload(): Collection
+    {
+        return User::permission(Permission::TicketsClaim->value)
+            ->where('is_active', true)
+            ->has('agentProfile')
+            ->select(['id', 'name'])
+            // Correlated COUNT per agent, range-scanning that agent's slice of
+            // INDEX(assigned_agent_id, status, …) — one query, no N+1.
+            ->withCount(['assignedTickets as active_tickets_count' => fn (Builder $query) => $query->active()])
+            ->with('agentProfile:id,user_id,is_available,max_active_tickets')
+            ->orderBy('name')
+            ->get();
+    }
+
     public function roles(): Collection
     {
         return Role::query()

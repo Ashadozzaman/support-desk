@@ -188,13 +188,24 @@ class TicketAssignmentService
     }
 
     /**
-     * Agents for the AssignAgentDialog dropdown: active, with an agent
-     * profile and `tickets.claim` — the same rule auto-assign uses.
+     * Agents for the list's agent filter: active, with an agent profile
+     * and `tickets.claim` — the same rule auto-assign uses.
      *
      * @return Collection<int, User>
      */
     public function agentOptions(): Collection
     {
         return $this->users->assignableAgents();
+    }
+
+    /**
+     * Agents for the AssignAgentDialog, with their current active-ticket
+     * count and capacity so the admin can spread the load.
+     *
+     * @return Collection<int, User>
+     */
+    public function assignOptions(): Collection
+    {
+        return $this->users->assignableAgentsWithWorkload();
     }
 }

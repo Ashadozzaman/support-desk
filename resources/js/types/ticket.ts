@@ -137,6 +137,13 @@ export type AgentOption = {
     name: string;
 };
 
+/** An agent in the assign dialog, with their current load. */
+export type AssignableAgent = AgentOption & {
+    active_tickets_count: number;
+    max_active_tickets: number;
+    is_available: boolean;
+};
+
 export type ActivityItem = {
     id: number;
     event: string;

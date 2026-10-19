@@ -73,6 +73,15 @@ interface UserRepositoryInterface
     public function assignableAgents(): Collection;
 
     /**
+     * Same agents as assignableAgents(), each with `active_tickets_count`
+     * and its agent profile (capacity, availability) loaded — so an admin
+     * assigning by hand can see who has room.
+     *
+     * @return Collection<int, User>
+     */
+    public function assignableAgentsWithWorkload(): Collection;
+
+    /**
      * Every role with its permission names loaded.
      *
      * @return Collection<int, Role>
