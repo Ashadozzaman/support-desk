@@ -1,22 +1,7 @@
-import { Link } from '@inertiajs/react';
-import {
-    BarChart3Icon,
-    BookOpen,
-    Clock,
-    FolderGit2,
-    HeartPulseIcon,
-    LayoutGrid,
-    ScrollTextIcon,
-    TicketIcon,
-    UploadIcon,
-    ShieldCheckIcon,
-    UserCogIcon,
-    UsersIcon,
-} from 'lucide-react';
-import AppLogo from '@/components/app-logo';
-import { NavFooter } from '@/components/nav-footer';
-import { NavMain } from '@/components/nav-main';
-import { NavUser } from '@/components/nav-user';
+import AppLogo from "@/components/app-logo";
+import { NavFooter } from "@/components/nav-footer";
+import { NavMain } from "@/components/nav-main";
+import { NavUser } from "@/components/nav-user";
 import {
     Sidebar,
     SidebarContent,
@@ -25,62 +10,64 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
-} from '@/components/ui/sidebar';
-import { useCan } from '@/hooks/use-can';
-import { dashboard } from '@/routes';
-import { auditLog, systemHealth } from '@/routes/admin';
-import { index as agentsIndex } from '@/routes/admin/agents';
-import { index as businessHoursIndex } from '@/routes/admin/business-hours';
-import { index as importsIndex } from '@/routes/admin/imports';
-import { index as reportsIndex } from '@/routes/reports';
-import { index as rolesIndex } from '@/routes/admin/roles';
-import { index as slaPoliciesIndex } from '@/routes/admin/sla-policies';
-import { index as usersIndex } from '@/routes/admin/users';
-import { index as ticketsIndex } from '@/routes/tickets';
-import type { NavItem } from '@/types';
+} from "@/components/ui/sidebar";
+import { useCan } from "@/hooks/use-can";
+import { dashboard } from "@/routes";
+import { auditLog, systemHealth } from "@/routes/admin";
+import { index as agentsIndex } from "@/routes/admin/agents";
+import { index as businessHoursIndex } from "@/routes/admin/business-hours";
+import { index as importsIndex } from "@/routes/admin/imports";
+import { index as rolesIndex } from "@/routes/admin/roles";
+import { index as slaPoliciesIndex } from "@/routes/admin/sla-policies";
+import { index as usersIndex } from "@/routes/admin/users";
+import { index as reportsIndex } from "@/routes/reports";
+import { index as ticketsIndex } from "@/routes/tickets";
+import type { NavItem } from "@/types";
+import { Link } from "@inertiajs/react";
+import {
+    BarChart3Icon,
+    Clock,
+    HeartPulseIcon,
+    LayoutGrid,
+    ScrollTextIcon,
+    ShieldCheckIcon,
+    TicketIcon,
+    UploadIcon,
+    UserCogIcon,
+    UsersIcon,
+} from "lucide-react";
 
 const baseNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
+        title: "Dashboard",
         href: dashboard(),
         icon: LayoutGrid,
     },
     {
-        title: 'Tickets',
+        title: "Tickets",
         href: ticketsIndex(),
         icon: TicketIcon,
     },
 ];
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
+const footerNavItems: NavItem[] = [];
 
 export function AppSidebar() {
-    const canManageSla = useCan('sla.manage');
-    const canManageBusinessHours = useCan('business-hours.manage');
-    const canManageImports = useCan('imports.manage');
-    const canManageUsers = useCan('users.manage');
-    const canManageRoles = useCan('roles.manage');
-    const canViewReports = useCan('reports.view') || useCan('reports.view-own');
-    const canViewMonitoring = useCan('monitoring.view');
-    const canViewAuditLog = useCan('audit.view');
+    const canManageSla = useCan("sla.manage");
+    const canManageBusinessHours = useCan("business-hours.manage");
+    const canManageImports = useCan("imports.manage");
+    const canManageUsers = useCan("users.manage");
+    const canManageRoles = useCan("roles.manage");
+    const canViewReports = useCan("reports.view") || useCan("reports.view-own");
+    const canViewMonitoring = useCan("monitoring.view");
+    const canViewAuditLog = useCan("audit.view");
 
     const mainNavItems: NavItem[] = [
         ...baseNavItems,
         ...(canViewReports
             ? [
                   {
-                      title: 'Reports',
+                      title: "Reports",
                       href: reportsIndex(),
                       icon: BarChart3Icon,
                   } satisfies NavItem,
@@ -89,12 +76,12 @@ export function AppSidebar() {
         ...(canManageUsers
             ? [
                   {
-                      title: 'Users',
+                      title: "Users",
                       href: usersIndex(),
                       icon: UserCogIcon,
                   } satisfies NavItem,
                   {
-                      title: 'Agents',
+                      title: "Agents",
                       href: agentsIndex(),
                       icon: UsersIcon,
                   } satisfies NavItem,
@@ -103,7 +90,7 @@ export function AppSidebar() {
         ...(canManageRoles
             ? [
                   {
-                      title: 'Roles',
+                      title: "Roles",
                       href: rolesIndex(),
                       icon: ShieldCheckIcon,
                   } satisfies NavItem,
@@ -112,7 +99,7 @@ export function AppSidebar() {
         ...(canManageSla
             ? [
                   {
-                      title: 'SLA Policies',
+                      title: "SLA Policies",
                       href: slaPoliciesIndex(),
                       icon: Clock,
                   } satisfies NavItem,
@@ -121,7 +108,7 @@ export function AppSidebar() {
         ...(canManageBusinessHours
             ? [
                   {
-                      title: 'Business Hours',
+                      title: "Business Hours",
                       href: businessHoursIndex(),
                       icon: Clock,
                   } satisfies NavItem,
@@ -130,7 +117,7 @@ export function AppSidebar() {
         ...(canManageImports
             ? [
                   {
-                      title: 'CSV Imports',
+                      title: "CSV Imports",
                       href: importsIndex(),
                       icon: UploadIcon,
                   } satisfies NavItem,
@@ -139,7 +126,7 @@ export function AppSidebar() {
         ...(canViewMonitoring
             ? [
                   {
-                      title: 'System health',
+                      title: "System health",
                       href: systemHealth(),
                       icon: HeartPulseIcon,
                   } satisfies NavItem,
@@ -148,7 +135,7 @@ export function AppSidebar() {
         ...(canViewAuditLog
             ? [
                   {
-                      title: 'Audit log',
+                      title: "Audit log",
                       href: auditLog(),
                       icon: ScrollTextIcon,
                   } satisfies NavItem,

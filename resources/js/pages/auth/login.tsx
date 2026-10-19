@@ -1,16 +1,14 @@
-import { Form, Head } from '@inertiajs/react';
-import InputError from '@/components/input-error';
-import PasswordInput from '@/components/password-input';
+import { Head, useForm } from '@inertiajs/react';
+import type { FormEvent } from 'react';
+import { CheckboxInput } from '@/components/form/CheckboxInput';
+import { PasswordField } from '@/components/form/PasswordField';
+import { SubmitButton } from '@/components/form/SubmitButton';
+import { TextInput } from '@/components/form/TextInput';
+import PasskeyVerify from '@/components/passkey-verify';
 import TextLink from '@/components/text-link';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
-import PasskeyVerify from '@/components/passkey-verify';
 
 type Props = {
     status?: string;
@@ -18,100 +16,73 @@ type Props = {
 };
 
 export default function Login({ status, canResetPassword }: Props) {
+    const form = useForm({ email: '', password: '', remember: false });
+
+    function submit(event: FormEvent) {
+        event.preventDefault();
+        form.post(store.url(), { onFinish: () => form.reset('password') });
+    }
+
     return (
         <>
             <Head title="Log in" />
 
-            <PasskeyVerify />
-
-            <Form
-                {...store.form()}
-                resetOnSuccess={['password']}
-                className="flex flex-col gap-6"
-            >
-                {({ processing, errors }) => (
-                    <>
-                        <div className="grid gap-6">
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    name="email"
-                                    required
-                                    autoFocus
-                                    tabIndex={1}
-                                    autoComplete="email"
-                                    placeholder="email@example.com"
-                                />
-                                <InputError message={errors.email} />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <div className="flex items-center">
-                                    <Label htmlFor="password">Password</Label>
-                                    {canResetPassword && (
-                                        <TextLink
-                                            href={request()}
-                                            className="ml-auto text-sm"
-                                            tabIndex={5}
-                                        >
-                                            Forgot your password?
-                                        </TextLink>
-                                    )}
-                                </div>
-                                <PasswordInput
-                                    id="password"
-                                    name="password"
-                                    required
-                                    tabIndex={2}
-                                    autoComplete="current-password"
-                                    placeholder="Password"
-                                />
-                                <InputError message={errors.password} />
-                            </div>
-
-                            <div className="flex items-center space-x-3">
-                                <Checkbox
-                                    id="remember"
-                                    name="remember"
-                                    tabIndex={3}
-                                />
-                                <Label htmlFor="remember">Remember me</Label>
-                            </div>
-
-                            <Button
-                                type="submit"
-                                className="mt-4 w-full"
-                                tabIndex={4}
-                                disabled={processing}
-                                data-test="login-button"
-                            >
-                                {processing && <Spinner />}
-                                Log in
-                            </Button>
-                        </div>
-
-                        <div className="text-center text-sm text-muted-foreground">
-                            Don't have an account?{' '}
-                            <TextLink href={register()} tabIndex={5}>
-                                Sign up
-                            </TextLink>
-                        </div>
-                    </>
-                )}
-            </Form>
-
             {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                <div className="rounded-md bg-green-50 p-3 text-sm font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
                     {status}
                 </div>
             )}
+
+            <PasskeyVerify />
+
+            <form onSubmit={submit} className="grid gap-5">
+                <TextInput
+                    name="email"
+                    label="Email address"
+                    type="email"
+                    required
+                    autoFocus
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    value={form.data.email}
+                    onChange={(e) => form.setData('email', e.target.value)}
+                    error={form.errors.email}
+                />
+
+                <PasswordField
+                    name="password"
+                    label="Password"
+                    required
+                    autoComplete="current-password"
+                    placeholder="Your password"
+                    value={form.data.password}
+                    onChange={(e) => form.setData('password', e.target.value)}
+                    error={form.errors.password}
+                    labelAction={
+                        canResetPassword && <TextLink href={request()}>Forgot password?</TextLink>
+                    }
+                />
+
+                <CheckboxInput
+                    name="remember"
+                    label="Keep me signed in"
+                    checked={form.data.remember}
+                    onChange={(checked) => form.setData('remember', checked)}
+                />
+
+                <SubmitButton processing={form.processing} className="w-full" data-test="login-button">
+                    Log in
+                </SubmitButton>
+            </form>
+
+            <p className="text-center text-sm text-muted-foreground">
+                New here? <TextLink href={register()}>Create a customer account</TextLink>
+            </p>
         </>
     );
 }
 
 Login.layout = {
-    title: 'Log in to your account',
-    description: 'Enter your email and password below to log in',
+    title: 'Welcome back',
+    description: 'Log in to raise a ticket or check on an existing one.',
 };
