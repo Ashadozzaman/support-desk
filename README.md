@@ -10,10 +10,13 @@ Laravel + React (Inertia) application for managing support tickets with SLA trac
 [`docs/CONCURRENT_TICKET_ASSIGNMENT.md`](docs/CONCURRENT_TICKET_ASSIGNMENT.md) ·
 [`docs/SLA.md`](docs/SLA.md) ·
 [`docs/TEST.md`](docs/TEST.md) ·
+[`docs/QUEUE_SCHEDULER_REALTIME.md`](docs/QUEUE_SCHEDULER_REALTIME.md) ·
+[`docs/DATABASE.md`](docs/DATABASE.md) ·
 [`docs/API.md`](docs/API.md) (REST API, docs at `/docs/api`)
 
 ## Features
 Tickets (CRUD, resolve/close, active vs resolved views) · `TKT-YYYY-NNNNNN` numbering · roles (Admin / Agent / Customer) with policies · manual + automatic assignment · concurrency-safe ticket claim · replies + internal notes · secure attachments · SLA by priority with business hours · scheduled escalation · queued email/database notifications · search & filters · CSV import · dashboard · activity history.
+Beyond the brief (see [Optional / bonus](#optional--bonus)): real-time updates (Reverb), reports, audit log, users & roles editor, REST API, email-to-ticket, help centre + optional AI assistants.
 
 ## Tech stack
 PHP 8.3+, Laravel 13, MySQL 8, React + TypeScript (Laravel React starter kit, Inertia, Tailwind, shadcn/ui), spatie/laravel-permission, Laravel Reverb, Pest.
@@ -65,7 +68,7 @@ App <http://localhost:8000> · Mailpit <http://localhost:8025> · tests `docker 
 Details (services, why no Supervisor, image stages, troubleshooting): [`docs/DOCKER.md`](docs/DOCKER.md).
 
 ## CI/CD (Jenkins)
-Sample `Jenkinsfile`: install → configure → lint (Pint, tsc) → test (Pest on MySQL) → build; `Deploy` on `main` is a placeholder.
+Sample `Jenkinsfile`: build a CI image → start a MySQL 8.4 container → Pint + `tsc` in parallel → on `main`, push images to a registry and deploy with `docker compose pull && up -d` after a manual approval (only when `REGISTRY`/`DEPLOY_HOST` are set). Known gap: the pipeline starts MySQL but has no Pest stage yet — run the tests locally or with `docker compose run --rm tests`.
 
 ## Background processing (required: queue + scheduler + Reverb)
 ```bash
@@ -134,7 +137,7 @@ logic with many edge cases. **One concurrency test** covers the claim race, beca
 Laravel's own auth scaffolding.
 
 ## CSV import
-Admin → Imports → upload CSV. Expected columns: `external_ref, subject, description, priority, category, customer_email, status, created_at` (sample: `docs/samples/tickets-import.csv`). Processing is queued; progress and a downloadable error report are available on the import page.
+Admin → Imports → upload CSV. Expected columns: `external_ref, subject, description, priority, category, customer_email, status, created_at` (sample: `samples/tickets-import.csv`, also downloadable from the import page). Processing is queued; progress and a downloadable error report are available on the import page.
 
 ## Email-to-ticket (support mailbox)
 A customer emails the support mailbox → a ticket is created through the normal `TicketService` (SLA, number,
@@ -186,6 +189,9 @@ Controller → Service → Repository (SOLID, DTOs, enums, spatie RBAC + policie
 5. **Escalation** — scheduled `sla:scan` → idempotent queued jobs → activity + notifications.
 6. **Internal notes** — hidden by repository scope, resources, notifications, attachment policy (tested).
 7. **CSV import** — streamed, chunked, per-chunk transactions, duplicate detection by `external_ref`, error report.
+8. **Ticket list at 1M rows** — one small index-backed query per status × visibility rule, then merge (top-N-per-branch); a single `status IN (…) ORDER BY created_at` query did a full scan + filesort (2.6–4.9 s). See `docs/ARCHITECTURE.md` §12.
+9. **Activity inside the transaction, notifications after commit** — the audit trail can't disagree with the data, and no email goes out for rolled-back work.
+10. **REST API reuses the web layers** — same FormRequests, policies and services, so the API can't have different rules from the UI.
 
 ### Assumptions
 - SLA durations are **business hours** (Low 48h, Medium 24h, High 8h, Critical 2h), warning at 80 %.
@@ -206,7 +212,49 @@ Controller → Service → Repository (SOLID, DTOs, enums, spatie RBAC + policie
 - Chatbot retrieval uses MySQL FULLTEXT relevance over published articles, not vector embeddings (no vector type in MySQL 8.0, no extra provider).
 
 ### EXPLAIN evidence
-[Paste `EXPLAIN` output for: customer list, agent queue, SLA scan, keyword search.]
+Measured 2026-10-20 on the dev database with **~1,000,000 tickets** (`PerformanceSeeder`), MySQL 8.0. The SQL is what
+the repositories generate (`TicketRepository::paginateFor` runs one query per status × visibility branch, so each
+row below is one branch). Columns trimmed to `type / key / rows / Extra`.
+
+**1. Customer list** (`created_by = ? AND status = 'open' ORDER BY created_at DESC LIMIT 15`) — 8 ms
+```
+type: ref   key: tickets_created_by_status_index   ref: const,const   rows: 21   Extra: Using filesort
+```
+**2. Agent queue** — "mine" branch (`assigned_agent_id = ? AND status = 'in_progress'`) — 11 ms
+```
+type: ref   key: tickets_assigned_agent_id_status_resolved_at_assigned_at_index   rows: 21   Extra: Using filesort
+```
+"unassigned" branch (`assigned_agent_id IS NULL AND status = 'open'`) — 9 ms
+```
+type: index   key: tickets_created_at_index   rows: 897   Extra: Using where; Backward index scan
+```
+Admin, one status branch (`status = 'open' ORDER BY created_at DESC LIMIT 15`) — 10 ms (the backward scan stops after 15 rows)
+```
+type: ref   key: tickets_status_created_at_index   ref: const   Extra: Backward index scan   (no filesort)
+```
+**3. `sla:scan`** (active, `sla_due_at <= now`, `sla_breach_notified_at IS NULL`, `chunkById(200)`) — 0.9 s per pass
+```
+type: index   key: PRIMARY   rows: 281 (est.)   filtered: 2.27   Extra: Using where
+```
+Known gap: on this data ~350k active tickets are past due **and already notified**; `(status, sla_due_at)` can't skip
+them, so MySQL walks the primary key. Correct, but ~0.9 s a minute. Fix (not done): an index leading with the flag,
+`(sla_breach_notified_at, status, sla_due_at)` and the same for the warning pass.
+
+**4. Keyword search** (`status = 'open' AND MATCH(subject, description) AGAINST ('+password' IN BOOLEAN MODE)`) — 0.9 s
+```
+type: fulltext   key: tickets_subject_description_fulltext   Extra: Using where; Ft_hints: no_ranking; Using filesort
+```
+The word matches 66k tickets; a rarer word returns in milliseconds.
+
+**5. Dashboard aggregate** — one agent (`WHERE assigned_agent_id = ?`, conditional `SUM`s) — 8 ms
+```
+type: ref   key: tickets_assigned_agent_id_status_resolved_at_assigned_at_index   rows: 30
+```
+Global (no `WHERE`) — 0.5 s, so it never runs on a request: `WarmDashboardCacheJob` rebuilds the cache on the queue
+```
+type: index   key: tickets_status_sla_due_at_index   rows: 960080   Extra: Using index (covering)
+```
+Report queries (rollups, percentiles, aging) are measured in [`docs/DATABASE.md`](docs/DATABASE.md) §7.
 
 ## Optional / bonus
 Implemented beyond the core requirements:
@@ -220,11 +268,30 @@ Implemented beyond the core requirements:
 - **Observability:** JSON logs with a request id, slow-query log, failed-job alerts, `/health` endpoint, Laravel Pulse.
 - **REST API v1 + OpenAPI docs:** Sanctum bearer tokens, tickets and replies (list/create/update/status/claim/assign, replies, attachment download), reusing the web app's FormRequests, policies and services. Interactive docs generated from the code (Scramble) at `/docs/api` for any signed-in user. Guide: [`docs/API.md`](docs/API.md).
 - **AI data assistant for staff (Step 24b):** `/assistant` answers "latest tickets", "resolved today", "last 7 days report" by calling read-only lookups that run with the asker's own permissions (an agent only sees their queue). Never sees ticket descriptions, replies or internal notes; can't change anything.
-- **AI support chatbot (Step 24):** `/help/chat` answers customers from published help-centre articles only, cites them, never sees tickets or internal notes, has no tools, and hands off to a normal ticket in one click. Reports → AI assistant tab shows the deflection rate. Needs `AI_ENABLED=true` + an Anthropic key.
+- **AI support chatbot (Step 24):** `/help/chat` answers customers from published help-centre articles only, cites them, never sees tickets or internal notes, has no tools, and hands off to a normal ticket in one click. Reports → AI assistant tab shows the deflection rate. Needs `AI_ENABLED=true` + an Anthropic or OpenAI key.
 - **Knowledge base + AI foundation (Step 22):** help centre with search, admin article editor, and a provider-neutral AI layer (`AiGuard`: on/off flag, rate limits, daily token budget, circuit breaker, PII redaction, audit rows). Off by default.
 - **Scale-tested** on a ~1M-ticket database (`PerformanceSeeder`), see EXPLAIN evidence above.
 
 Not done: auto-close of resolved tickets, SLA pause while waiting for the customer, API endpoints for admin screens/reports (see `docs/API.md` §7).
+
+### AI safety rules (Steps 22–24b)
+AI is **off by default** (`AI_ENABLED=false`); the app and all tests run on a deterministic `FakeAiClient`.
+1. **Human in the loop:** no AI feature replies to a customer as staff, changes a ticket's status/priority, assigns or closes it. The customer chatbot has no tools; the staff data assistant has four read-only lookups.
+2. **Least data:** the customer chatbot sees published help articles and that conversation only — never tickets, replies, internal notes or other customers. The data assistant's lookups run with the asker's own permissions and return list fields only (no descriptions, replies or notes).
+3. **Prompt injection:** user text is wrapped in tags the user can't close (`AiGuard::wrapUntrusted`); the system prompt says it is data, not instructions.
+4. **PII redaction:** emails, phone numbers and long digit runs are redacted before anything leaves the app.
+5. **One gate (`AiGuard`):** feature flag → circuit breaker → per-user rate limit → daily token budget → redaction → call → audit row. A refusal happens before any HTTP request.
+6. **Audit without content:** `ai_interactions` stores feature, model, tokens, latency and status — never the prompt or the answer — and is pruned after `ai.retention_days`.
+7. **Transparency and hand-off:** the chatbot says it is an AI, cites its articles, says "I don't know" when the articles don't cover the question, never promises times or refunds, and offers "Talk to a human" (a normal ticket) at any time.
+
+### Quality gates
+`./vendor/bin/pint --test` · `phpstan analyse` (Larastan, level 7) · `npx tsc --noEmit` (strict, no `any`) · `php artisan test` on MySQL. `composer test` runs Pint, Larastan and Pest together.
+
+### Trade-offs and what I'd do next
+- **Database queue, not Redis/Horizon** — no extra service to run for an assessment; Redis + Horizon is the first change for real load (the Docker stack already has Redis).
+- **MySQL FULLTEXT, not Meilisearch/vector search** — good enough at this size and needs no extra service; the repository interfaces are the swap points.
+- **SLA clock doesn't pause on `waiting_for_customer`** — a documented v1 choice; the columns for it are planned (`docs/ARCHITECTURE.md` §8.2).
+- **Next:** the `sla:scan` index above, a Pest stage in the Jenkins pipeline, auto-close of resolved tickets, a read replica for reports.
 
 ## Project structure
 See `docs/CODING_STRUCTURE.md`.
