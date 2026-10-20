@@ -1,8 +1,11 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DataAssistantController;
+use App\Http\Controllers\HelpCentreController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportExportController;
+use App\Http\Controllers\SupportChatController;
 use Illuminate\Support\Facades\Route;
 
 // No public landing page: `/` is the login screen. A signed-in user is forwarded
@@ -11,6 +14,27 @@ Route::redirect('/', '/login')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Help centre (Step 22): published KB articles for every signed-in user.
+    Route::get('help', [HelpCentreController::class, 'index'])->name('help.index');
+
+    // Support chatbot (Step 24). Registered before help/{article:slug} so
+    // "chat" is never read as an article slug. 404 while AI is off.
+    Route::middleware(['permission:ai.chat', 'ai.enabled'])->prefix('help/chat')->name('help.chat.')->group(function () {
+        Route::get('/', [SupportChatController::class, 'show'])->name('show');
+        Route::post('messages', [SupportChatController::class, 'ask'])->middleware('throttle:ai-chat')->name('ask');
+        Route::post('handoff', [SupportChatController::class, 'handOff'])->middleware('throttle:10,1')->name('handoff');
+        Route::post('restart', [SupportChatController::class, 'startOver'])->name('restart');
+    });
+
+    Route::get('help/{article:slug}', [HelpCentreController::class, 'show'])->name('help.show');
+
+    // Staff data assistant (Step 24b): read-only lookups, scoped to the asker.
+    Route::middleware(['permission:ai.use-assistant', 'ai.enabled'])->prefix('assistant')->name('assistant.')->group(function () {
+        Route::get('/', [DataAssistantController::class, 'show'])->name('show');
+        Route::post('messages', [DataAssistantController::class, 'ask'])->middleware('throttle:ai-chat')->name('ask');
+        Route::post('restart', [DataAssistantController::class, 'startOver'])->name('restart');
+    });
 
     // Not under /admin: agents may open it for their own performance row.
     // Middleware is the first gate; ReportPolicy (per tab) the second.

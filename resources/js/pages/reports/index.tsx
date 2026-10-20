@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 import { ReportFilterCard } from '@/components/cards/ReportFilterCard';
 import { AgentsReportView } from '@/components/report/AgentsReportView';
+import { AiReportView } from '@/components/report/AiReportView';
 import { AgingReportView } from '@/components/report/AgingReportView';
 import { ExportButton } from '@/components/report/ExportButton';
 import { CategoriesReportView } from '@/components/report/CategoriesReportView';
@@ -58,6 +59,8 @@ function ReportBody(props: Props) {
             return <AgingReportView report={props.report} />;
         case 'categories':
             return <CategoriesReportView rows={props.report} />;
+        case 'ai':
+            return <AiReportView report={props.report} />;
     }
 }
 

@@ -114,7 +114,7 @@ return [
 
         // Queues watched by QueueCheck/QueueBacklogCheck (`imports` excluded:
         // its own worker may legitimately be busy for an hour).
-        'queues' => ['sla', 'default', 'notifications', 'broadcasts', 'exports'],
+        'queues' => ['sla', 'default', 'mail', 'notifications', 'broadcasts', 'exports', 'ai'],
     ],
 
     /*
@@ -133,6 +133,34 @@ return [
         'auth_retention_days' => (int) env('AUDIT_AUTH_RETENTION_DAYS', 180),
         'admin_retention_days' => (int) env('AUDIT_ADMIN_RETENTION_DAYS', 1095),
         'page_default_days' => (int) env('AUDIT_PAGE_DEFAULT_DAYS', 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Support mailbox (email-to-ticket, Step 25b — docs/IMAP.md)
+    |--------------------------------------------------------------------------
+    |
+    | Defaults for Admin → Mailbox. Whatever an admin saves there wins; these
+    | only fill the form and, for the password, are used while none has been
+    | saved (IMAP_PASSWORD keeps the secret out of the database if preferred).
+    | The integration is on only once an admin enables it on the page.
+    */
+    'inbound' => [
+        // Backstop against mail loops with auto-responders that send no
+        // Auto-Submitted header: more than this per sender per hour is skipped.
+        'max_per_sender_per_hour' => (int) env('INBOUND_MAX_PER_SENDER_PER_HOUR', 20),
+    ],
+
+    'mailbox' => [
+        'host' => env('IMAP_HOST', 'imap.gmail.com'),
+        'port' => (int) env('IMAP_PORT', 993),
+        'encryption' => env('IMAP_ENCRYPTION', 'ssl'),
+        'username' => env('IMAP_USERNAME', ''),
+        'password' => env('IMAP_PASSWORD'),
+        'folder' => env('IMAP_FOLDER', 'INBOX'),
+        'fetch_interval_minutes' => (int) env('IMAP_FETCH_INTERVAL_MINUTES', 2),
+        'batch_size' => (int) env('IMAP_BATCH_SIZE', 25),
+        'timeout' => (int) env('IMAP_TIMEOUT', 30),
     ],
 
 ];

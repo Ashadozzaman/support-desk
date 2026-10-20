@@ -7,21 +7,24 @@ Laravel + React (Inertia) application for managing support tickets with SLA trac
 [Key decisions](#key-decisions) ·
 [EXPLAIN evidence](#explain-evidence) ·
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
-[`docs/CONCURRENT_TICKET_ASSIGNMENT.md`](docs/CONCURRENT_TICKET_ASSIGNMENT.md) ·
-[`docs/SLA.md`](docs/SLA.md) ·
-[`docs/TEST.md`](docs/TEST.md) ·
+[`docs/DATABASE.md`](docs/DATABASE.md) ·
 [`docs/API.md`](docs/API.md) (REST API, docs at `/docs/api`)
 
 ## Features
+
 Tickets (CRUD, resolve/close, active vs resolved views) · `TKT-YYYY-NNNNNN` numbering · roles (Admin / Agent / Customer) with policies · manual + automatic assignment · concurrency-safe ticket claim · replies + internal notes · secure attachments · SLA by priority with business hours · scheduled escalation · queued email/database notifications · search & filters · CSV import · dashboard · activity history.
+Beyond the brief (see [Optional / bonus](#optional--bonus)): real-time updates (Reverb), reports, audit log, users & roles editor, REST API, email-to-ticket, help centre + optional AI assistants.
 
 ## Tech stack
+
 PHP 8.3+, Laravel 13, MySQL 8, React + TypeScript (Laravel React starter kit, Inertia, Tailwind, shadcn/ui), spatie/laravel-permission, Laravel Reverb, Pest.
 
 ## Requirements
+
 PHP 8.3+, Composer, Node 20+, MySQL 8, (optional) Docker.
 
 ## Local setup
+
 ```bash
 git clone https://github.com/Ashadozzaman/support-desk.git && cd support-desk
 composer install
@@ -29,7 +32,9 @@ npm install
 cp .env.example .env
 php artisan key:generate
 ```
+
 Edit `.env`:
+
 ```
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -41,64 +46,91 @@ QUEUE_CONNECTION=database
 MAIL_MAILER=log            # or smtp → Mailpit
 SUPPORT_SLA_TIMEZONE=Asia/Dhaka   # business-hours timezone (DB stays UTC)
 ```
+
 All `SUPPORT_*` settings (SLA warning %, assignment strategy, upload limits, import chunk size, dashboard cache) are listed in `.env.example` and read by `config/support.php`.
 
 Create the database, then:
+
 ```bash
 php artisan migrate --seed
-# optional, for performance testing only: ~1M tickets (takes a while)
-# php artisan db:seed --class=PerformanceSeeder
 php artisan storage:link   # not needed for attachments (private disk), only for public assets
+
+composer run dev # or
+
 npm run dev                # or: npm run build
 php artisan serve
 ```
 
+### Optional: load ~1 million tickets (performance testing)
+
+The normal seed is small. To reproduce the [EXPLAIN evidence](#explain-evidence), load a large dataset into the
+**dev** database (not `support_desk_test`) after `migrate --seed`:
+
+```bash
+php artisan db:seed --class=PerformanceSeeder          # 1,000,000 tickets, 5,000 customers, 30 agents, last 3 months
+# or a smaller run (each variable is optional; defaults are the numbers above, chunk 2000):
+SUPPORT_SEED_TICKETS=100000 SUPPORT_SEED_CUSTOMERS=1000 SUPPORT_SEED_AGENTS=10 \
+SUPPORT_SEED_MONTHS=3 SUPPORT_SEED_CHUNK=2000 php artisan db:seed --class=PerformanceSeeder
+# then fill the report tables for the seeded period:
+php artisan reports:aggregate --from=$(date -d '3 months ago' +%F) --to=$(date +%F)
+```
+
+It uses chunked bulk `INSERT`s (2,000 rows per statement) instead of factories, so 1M rows take minutes, not hours.
+Ticket numbers still come from the real `TicketNumberGenerator`, and SLA deadlines from the real
+`BusinessHoursCalculator`, so the data behaves like real tickets. Run it once: a second run stops on the
+unique `perf-customer-N@support-desk.test` emails (start again with `php artisan migrate:fresh --seed`, which deletes all data).
+
 ## Run with Docker
+
 Full stack (php-fpm, nginx, MySQL 8, Redis, Mailpit, queue + import workers, scheduler, Reverb), each with a healthcheck:
+
 ```bash
 cp .env.docker.example .env.docker
 sed -i "s|^APP_KEY=.*|APP_KEY=base64:$(openssl rand -base64 32)|" .env.docker
 docker compose up -d --build
 docker compose exec app php artisan db:seed --force
 ```
+
 App <http://localhost:8000> · Mailpit <http://localhost:8025> · tests `docker compose run --rm tests`.
 Details (services, why no Supervisor, image stages, troubleshooting): [`docs/DOCKER.md`](docs/DOCKER.md).
 
 ## CI/CD (Jenkins)
-Sample `Jenkinsfile`: install → configure → lint (Pint, tsc) → test (Pest on MySQL) → build; `Deploy` on `main` is a placeholder.
+
+Sample `Jenkinsfile`: build a CI image → start a MySQL 8.4 container → Pint + `tsc` in parallel → on `main`, push images to a registry and deploy with `docker compose pull && up -d` after a manual approval (only when `REGISTRY`/`DEPLOY_HOST` are set). Known gap: the pipeline starts MySQL but has no Pest stage yet — run the tests locally or with `docker compose run --rm tests`.
 
 ## Background processing (required: queue + scheduler + Reverb)
+
 ```bash
-php artisan queue:work --queue=sla,default,notifications,broadcasts,exports
+php artisan queue:work --queue=sla,default,mail,notifications,broadcasts,exports,ai
 php artisan queue:work --queue=imports --timeout=3600   # CSV import worker
 php artisan schedule:work          # local; production cron: * * * * * php artisan schedule:run
 php artisan reverb:start           # real-time notifications (WebSockets)
 ```
-Shortcut: `composer dev` runs serve, Vite, the main queue worker, `schedule:work` and Reverb together (`php artisan dev:list` shows them). The import worker is left out on purpose, so run it in its own terminal. Add the Reverb variables from `.env.example` (`BROADCAST_CONNECTION=reverb`, `REVERB_*`, `VITE_REVERB_*`).
 
-| Requirement | Mechanism |
-|---|---|
-| Auto assignment | queued `AutoAssignTicketJob` + scheduled `tickets:auto-assign` sweep |
-| SLA escalation | scheduled `sla:scan` (every minute) → queued `ProcessSla*Job` |
-| Email / in-app notifications | queued notifications (`mail`, `database`, `broadcast`) |
-| Real-time updates | Laravel Reverb private channels |
-| CSV import | queued `ProcessTicketImportJob` (chunked, own worker) |
-| Claim ticket, activity, replies | synchronous inside DB transactions |
+Shortcut: `composer run dev` runs serve, Vite, the main queue worker, `schedule:work` and Reverb together (`php artisan dev:list` shows them). The import worker is left out on purpose, so run it in its own terminal. Add the Reverb variables from `.env.example` (`BROADCAST_CONNECTION=reverb`, `REVERB_*`, `VITE_REVERB_*`).
 
-Full detail: [`docs/QUEUE_SCHEDULER_REALTIME.md`](docs/QUEUE_SCHEDULER_REALTIME.md).
+| Requirement                     | Mechanism                                                            |
+| ------------------------------- | -------------------------------------------------------------------- |
+| Auto assignment                 | queued `AutoAssignTicketJob` + scheduled `tickets:auto-assign` sweep |
+| SLA escalation                  | scheduled `sla:scan` (every minute) → queued `ProcessSla*Job`        |
+| Email / in-app notifications    | queued notifications (`mail`, `database`, `broadcast`)               |
+| Real-time updates               | Laravel Reverb private channels                                      |
+| CSV import                      | queued `ProcessTicketImportJob` (chunked, own worker)                |
+| Claim ticket, activity, replies | synchronous inside DB transactions                                   |
 
 ## Demo accounts (seeded)
-| Role | Email | Password |
-|---|---|---|
-| Admin | admin@support-desk.test | password |
-| Agent | agent1@support-desk.test (also agent2, agent3) | password |
+
+| Role     | Email                                          | Password |
+| -------- | ---------------------------------------------- | -------- |
+| Admin    | admin@support-desk.test                        | password |
+| Agent    | agent1@support-desk.test (also agent2, agent3) | password |
 | Customer | customer1@support-desk.test (also customer2–5) | password |
 
 (Local/demo only. No production credentials in the repo.)
 
 ## Testing
-**488 Pest tests, 2085 assertions, all passing** (Unit + Feature + a real Concurrency suite) on MySQL 8.
-Full guide, including how to run a single test: [`docs/TEST.md`](docs/TEST.md).
+
+**703 Pest tests, 3078 assertions** (Unit + Feature + a real Concurrency suite) on MySQL 8. Last run 2026-10-20: 702 pass; 1 known clock-dependent failure (`ReportExportTest` "the export job writes the file…", fails only after the business-day rollover).
 
 ```bash
 cp .env.testing.example .env.testing     # separate MySQL DB: support_desk_test
@@ -113,20 +145,21 @@ php artisan test --filter="Thursday 17:00"   # one test by name
 The tests need MySQL because they rely on FULLTEXT search, row locks (`FOR UPDATE` / `SKIP LOCKED`) and two real connections.
 
 ### Testing strategy — what I chose to test and why
+
 I tested the places where a bug costs the most and where clicking through the app by hand can't catch it:
 
-| Risk | Proven by |
-|---|---|
-| Two agents claim the same ticket | `tests/Concurrency/TicketClaimConcurrencyTest.php`: two OS processes, two MySQL connections, exactly one winner |
-| Wrong SLA deadline (business hours, weekends, holidays, 18:00 boundary) | `tests/Unit/Sla/BusinessHoursCalculatorTest.php`: dataset incl. Thu 17:00 + 120 min → Sun 10:00 |
-| A user sees or does something they shouldn't | `tests/Feature/Rbac/TicketAbilityMatrixTest.php`: role × action × own/other/unassigned |
-| An internal note reaches a customer | `ReplyTest`, `InternalNoteBroadcastSecrecyTest`, `ChannelAuthorizationTest`, `NotificationRecipientsTest` |
-| The same breach is escalated or emailed twice | `tests/Feature/Sla/SlaScanTest.php`: scan run twice → one escalation |
-| Duplicate ticket numbers | `TicketNumberGeneratorTest` (50 creates, year rollover, `reserve(100)`) + unique-index test |
-| Invalid status change | `TicketStatusTransitionTest`: e.g. Closed → Open → 422 |
-| Auto-assign overloads an agent | `LeastWorkloadStrategyTest`: availability, capacity, category skill, tie-break |
-| A bad CSV row fails the import | `TicketImportTest`: invalid rows reported, duplicates skipped |
-| Slow list (N+1) / filter leaks rows | `TicketFilterTest`, `TicketIndexPaginationTest`: query count + visibility under filters |
+| Risk                                                                    | Proven by                                                                                                       |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Two agents claim the same ticket                                        | `tests/Concurrency/TicketClaimConcurrencyTest.php`: two OS processes, two MySQL connections, exactly one winner |
+| Wrong SLA deadline (business hours, weekends, holidays, 18:00 boundary) | `tests/Unit/Sla/BusinessHoursCalculatorTest.php`: dataset incl. Thu 17:00 + 120 min → Sun 10:00                 |
+| A user sees or does something they shouldn't                            | `tests/Feature/Rbac/TicketAbilityMatrixTest.php`: role × action × own/other/unassigned                          |
+| An internal note reaches a customer                                     | `ReplyTest`, `InternalNoteBroadcastSecrecyTest`, `ChannelAuthorizationTest`, `NotificationRecipientsTest`       |
+| The same breach is escalated or emailed twice                           | `tests/Feature/Sla/SlaScanTest.php`: scan run twice → one escalation                                            |
+| Duplicate ticket numbers                                                | `TicketNumberGeneratorTest` (50 creates, year rollover, `reserve(100)`) + unique-index test                     |
+| Invalid status change                                                   | `TicketStatusTransitionTest`: e.g. Closed → Open → 422                                                          |
+| Auto-assign overloads an agent                                          | `LeastWorkloadStrategyTest`: availability, capacity, category skill, tie-break                                  |
+| A bad CSV row fails the import                                          | `TicketImportTest`: invalid rows reported, duplicates skipped                                                   |
+| Slow list (N+1) / filter leaks rows                                     | `TicketFilterTest`, `TicketIndexPaginationTest`: query count + visibility under filters                         |
 
 **Mostly feature tests**, so the whole request path (middleware → policy → service → DB) is proven. **Unit tests** cover pure
 logic with many edge cases. **One concurrency test** covers the claim race, because sequential calls can't prove it.
@@ -134,12 +167,58 @@ logic with many edge cases. **One concurrency test** covers the claim race, beca
 Laravel's own auth scaffolding.
 
 ## CSV import
-Admin → Imports → upload CSV. Expected columns: `external_ref, subject, description, priority, category, customer_email, status, created_at` (sample: `docs/samples/tickets-import.csv`). Processing is queued; progress and a downloadable error report are available on the import page.
+
+Admin → Imports → upload CSV. Expected columns: `external_ref, subject, description, priority, category, customer_email, status, created_at` (sample: `samples/tickets-import.csv`, also downloadable from the import page). Processing is queued; progress and a downloadable error report are available on the import page.
+
+## Email-to-ticket (support mailbox)
+
+A customer emails the support mailbox → a ticket is created through the normal `TicketService` (SLA, number,
+auto-assign, notifications). Their reply to that conversation is added to **the same ticket** — matched by
+`In-Reply-To` / `References`, or a `[TKT-…]` number in the subject, and only on the sender's own ticket; never by
+subject text. The same message fetched twice never creates a second ticket (UNIQUE Message-ID).
+Ticket emails to the customer carry the conversation headers (`Message-ID` we remember, `In-Reply-To`,
+`References`, `[TKT-…]` subject, `Reply-To` the mailbox), so "Reply" in their mail client lands on the ticket.
+Auto-replies, bounces, list mail, our own mail and staff addresses are never imported, and one address can send at
+most 20 messages an hour (`INBOUND_MAX_PER_SENDER_PER_HOUR`).
+
+**Setup (Gmail):**
+
+1. On the Google account turn on 2-Step Verification, then create an app password at
+   <https://myaccount.google.com/apppasswords> (16 characters, shown once).
+2. Either put it in `.env` — `IMAP_USERNAME=you@gmail.com`, `IMAP_PASSWORD="abcd efgh ijkl mnop"` (quoted: it has
+   spaces) — or type it on **Admin → Mailbox** (stored encrypted with `APP_KEY`; a saved password wins over `.env`).
+   The password is never shown again, sent to the browser or written to logs; leave the field blank to keep it.
+3. **Admin → Mailbox**: host `imap.gmail.com`, port `993`, SSL, folder `INBOX` are prefilled → **Test connection**
+   → tick **Enabled** → **Save** → **Sync now**. The first sync only records the starting point: mail already in the
+   inbox is never imported. Send a test email from another address and sync again.
+
+**Running it:** a worker must listen on the `mail` queue and the scheduler must run:
+
+```bash
+php artisan queue:work --queue=sla,default,mail,notifications,broadcasts,exports,ai
+php artisan schedule:work            # mailbox:sync every minute; it syncs when the configured interval has passed
+php artisan mailbox:sync --now       # queue one sync immediately
+```
+
+Messages are read without being marked read, moved or deleted. Each sync is listed in **Sync history**
+(fetched / new tickets / replies / skipped / duplicates / failed).
+
+**Testing:** `php artisan test --compact tests/Feature/Inbound` — IMAP is replaced by `FakeMailboxClient`; no real
+mailbox or credentials are needed.
+
+**Troubleshooting:** _Authentication failed_ → wrong or revoked app password (the normal Google password doesn't
+work over IMAP). _Could not connect_ → host/port/encryption, or outbound port 993 blocked. _Nothing imported_ →
+the first sync is the starting point; check that the `mail` worker and the scheduler run, and the Skipped/Failed
+counts in Sync history (`inbound_messages.skip_reason` says why a message was skipped: `auto_reply`, `bounce`,
+`bulk_mail`, `own_mail`, `staff_sender`, `rate_limited`, …). Customers receive agents'
+replies by email only with a real mailer (`MAIL_MAILER=smtp`).
 
 ## Architecture overview
+
 Controller → Service → Repository (SOLID, DTOs, enums, spatie RBAC + policies). Transactions live in services; events dispatch after commit. Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/DATABASE.md`](docs/DATABASE.md), [`docs/CODING_STRUCTURE.md`](docs/CODING_STRUCTURE.md).
 
 ### Key decisions
+
 1. **Ticket numbers** — `ticket_sequences` row lock per year + unique index; width grows past 6 digits.
 2. **Concurrent claim** — atomic `UPDATE … WHERE assigned_agent_id IS NULL`; loser gets HTTP 409.
 3. **Automatic assignment** — least active tickets, tie-break by oldest `last_assigned_at`; honours availability, category skills, capacity; `SKIP LOCKED` pick.
@@ -147,25 +226,95 @@ Controller → Service → Repository (SOLID, DTOs, enums, spatie RBAC + policie
 5. **Escalation** — scheduled `sla:scan` → idempotent queued jobs → activity + notifications.
 6. **Internal notes** — hidden by repository scope, resources, notifications, attachment policy (tested).
 7. **CSV import** — streamed, chunked, per-chunk transactions, duplicate detection by `external_ref`, error report.
+8. **Ticket list at 1M rows** — one small index-backed query per status × visibility rule, then merge (top-N-per-branch); a single `status IN (…) ORDER BY created_at` query did a full scan + filesort (2.6–4.9 s). See `docs/ARCHITECTURE.md` §12.
+9. **Activity inside the transaction, notifications after commit** — the audit trail can't disagree with the data, and no email goes out for rolled-back work.
+10. **REST API reuses the web layers** — same FormRequests, policies and services, so the API can't have different rules from the UI.
 
 ### Assumptions
+
 - SLA durations are **business hours** (Low 48h, Medium 24h, High 8h, Critical 2h), warning at 80 %.
 - Business days Sun–Thu, 09:00–18:00 in `Asia/Dhaka` (`SUPPORT_SLA_TIMEZONE`); hours and holidays are editable by an admin.
 - Priority change recalculates the deadline from ticket creation time.
 - Admin-created accounts are marked email-verified (the admin vouches for the address); the user sets their own password from an emailed reset link.
+- Email-to-ticket (`docs/IMAP.md`): an email from an unknown address creates an unverified customer account and **no email is sent to it** (the From address can be forged); email tickets start at Medium priority with no category; a reply threads only onto the sender's own ticket, and a reply to a closed ticket starts a new one.
 - A user is an "agent" when their role has the `tickets.claim` permission and they have an agent profile — not because the role is named `agent`.
 - Roles are editable by admins (`/admin/roles`); permissions are fixed in code. The role/permission table in `docs/ARCHITECTURE.md` §3 is the seeded default. Escalation and new-ticket emails go to everyone with `dashboard.view-global`.
 - `escalated` is a flag (`escalated_at`, `escalation_level`), not a status, so a ticket can be escalated in any status.
-- A customer reply on a *resolved* ticket reopens it; a *closed* ticket is final.
+- A customer reply on a _resolved_ ticket reopens it; a _closed_ ticket is final.
 - The SLA clock does not pause while a ticket is `waiting_for_customer` (design hook only, not in v1).
 - Ticket URLs use `ticket_number`, never the numeric id, so tickets can't be enumerated.
 - Imported tickets get SLA deadlines like normal tickets but don't email customers.
+- The help centre (`/help`) is for signed-in users only; there is no public, logged-out help page.
+- AI is off unless `AI_ENABLED=true` and a provider with its key are set: `AI_PROVIDER=anthropic` + `ANTHROPIC_API_KEY`, or `AI_PROVIDER=openai` + `OPENAI_API_KEY` (set `AI_MODEL` to a model of that provider, e.g. `gpt-4.1-mini`). A Claude Pro subscription does not include API access. Without them a deterministic fake client is used, and AI endpoints return 404. Prompts and answers are never stored, only metadata (`ai_interactions`).
+- A chat hand-off creates a Medium-priority ticket with no category (no AI triage); the agent adjusts it after reading the transcript.
+- Chatbot retrieval uses MySQL FULLTEXT relevance over published articles, not vector embeddings (no vector type in MySQL 8.0, no extra provider).
 
 ### EXPLAIN evidence
-[Paste `EXPLAIN` output for: customer list, agent queue, SLA scan, keyword search.]
+
+Measured 2026-10-20 on the dev database with **~1,000,000 tickets** (`PerformanceSeeder`), MySQL 8.0. The SQL is what
+the repositories generate (`TicketRepository::paginateFor` runs one query per status × visibility branch, so each
+row below is one branch). Columns trimmed to `type / key / rows / Extra`.
+
+**1. Customer list** (`created_by = ? AND status = 'open' ORDER BY created_at DESC LIMIT 15`) — 8 ms
+
+```
+type: ref   key: tickets_created_by_status_index   ref: const,const   rows: 21   Extra: Using filesort
+```
+
+**2. Agent queue** — "mine" branch (`assigned_agent_id = ? AND status = 'in_progress'`) — 11 ms
+
+```
+type: ref   key: tickets_assigned_agent_id_status_resolved_at_assigned_at_index   rows: 21   Extra: Using filesort
+```
+
+"unassigned" branch (`assigned_agent_id IS NULL AND status = 'open'`) — 9 ms
+
+```
+type: index   key: tickets_created_at_index   rows: 897   Extra: Using where; Backward index scan
+```
+
+Admin, one status branch (`status = 'open' ORDER BY created_at DESC LIMIT 15`) — 10 ms (the backward scan stops after 15 rows)
+
+```
+type: ref   key: tickets_status_created_at_index   ref: const   Extra: Backward index scan   (no filesort)
+```
+
+**3. `sla:scan`** (active, `sla_due_at <= now`, `sla_breach_notified_at IS NULL`, `chunkById(200)`) — 0.9 s per pass
+
+```
+type: index   key: PRIMARY   rows: 281 (est.)   filtered: 2.27   Extra: Using where
+```
+
+Known gap: on this data ~350k active tickets are past due **and already notified**; `(status, sla_due_at)` can't skip
+them, so MySQL walks the primary key. Correct, but ~0.9 s a minute. Fix (not done): an index leading with the flag,
+`(sla_breach_notified_at, status, sla_due_at)` and the same for the warning pass.
+
+**4. Keyword search** (`status = 'open' AND MATCH(subject, description) AGAINST ('+password' IN BOOLEAN MODE)`) — 0.9 s
+
+```
+type: fulltext   key: tickets_subject_description_fulltext   Extra: Using where; Ft_hints: no_ranking; Using filesort
+```
+
+The word matches 66k tickets; a rarer word returns in milliseconds.
+
+**5. Dashboard aggregate** — one agent (`WHERE assigned_agent_id = ?`, conditional `SUM`s) — 8 ms
+
+```
+type: ref   key: tickets_assigned_agent_id_status_resolved_at_assigned_at_index   rows: 30
+```
+
+Global (no `WHERE`) — 0.5 s, so it never runs on a request: `WarmDashboardCacheJob` rebuilds the cache on the queue
+
+```
+type: index   key: tickets_status_sla_due_at_index   rows: 960080   Extra: Using index (covering)
+```
+
+Report queries (rollups, percentiles, aging) are measured in [`docs/DATABASE.md`](docs/DATABASE.md) §7.
 
 ## Optional / bonus
+
 Implemented beyond the core requirements:
+
 - **Real-time (Laravel Reverb):** private channels for the notification bell, live ticket pages and the staff queue. Internal notes broadcast only on `tickets.{n}.staff`.
 - **Docker Compose:** full stack with healthchecks ([`docs/DOCKER.md`](docs/DOCKER.md)). **Jenkins** pipeline sample.
 - **Caching:** SLA policies, business hours and holidays (`rememberForever`, cleared on admin edit); dashboard aggregates (60 s, kept warm by a scheduled job).
@@ -175,9 +324,36 @@ Implemented beyond the core requirements:
 - **Admin users & roles editor:** create users, edit roles and permissions, with lockout protection (the last active user who can manage users or roles can't lose that permission).
 - **Observability:** JSON logs with a request id, slow-query log, failed-job alerts, `/health` endpoint, Laravel Pulse.
 - **REST API v1 + OpenAPI docs:** Sanctum bearer tokens, tickets and replies (list/create/update/status/claim/assign, replies, attachment download), reusing the web app's FormRequests, policies and services. Interactive docs generated from the code (Scramble) at `/docs/api` for any signed-in user. Guide: [`docs/API.md`](docs/API.md).
+- **AI data assistant for staff:** `/assistant` answers "latest tickets", "resolved today", "last 7 days report" by calling read-only lookups that run with the asker's own permissions (an agent only sees their queue). Never sees ticket descriptions, replies or internal notes; can't change anything.
+- **AI support chatbot:** `/help/chat` answers customers from published help-centre articles only, cites them, never sees tickets or internal notes, has no tools, and hands off to a normal ticket in one click. Reports → AI assistant tab shows the deflection rate. Needs `AI_ENABLED=true` + an Anthropic or OpenAI key.
+- **Knowledge base + AI foundation:** help centre with search, admin article editor, and a provider-neutral AI layer (`AiGuard`: on/off flag, rate limits, daily token budget, circuit breaker, PII redaction, audit rows). Off by default.
 - **Scale-tested** on a ~1M-ticket database (`PerformanceSeeder`), see EXPLAIN evidence above.
 
 Not done: auto-close of resolved tickets, SLA pause while waiting for the customer, API endpoints for admin screens/reports (see `docs/API.md` §7).
 
+### AI safety rules (help centre, chatbot, data assistant)
+
+AI is **off by default** (`AI_ENABLED=false`); the app and all tests run on a deterministic `FakeAiClient`.
+
+1. **Human in the loop:** no AI feature replies to a customer as staff, changes a ticket's status/priority, assigns or closes it. The customer chatbot has no tools; the staff data assistant has four read-only lookups.
+2. **Least data:** the customer chatbot sees published help articles and that conversation only — never tickets, replies, internal notes or other customers. The data assistant's lookups run with the asker's own permissions and return list fields only (no descriptions, replies or notes).
+3. **Prompt injection:** user text is wrapped in tags the user can't close (`AiGuard::wrapUntrusted`); the system prompt says it is data, not instructions.
+4. **PII redaction:** emails, phone numbers and long digit runs are redacted before anything leaves the app.
+5. **One gate (`AiGuard`):** feature flag → circuit breaker → per-user rate limit → daily token budget → redaction → call → audit row. A refusal happens before any HTTP request.
+6. **Audit without content:** `ai_interactions` stores feature, model, tokens, latency and status — never the prompt or the answer — and is pruned after `ai.retention_days`.
+7. **Transparency and hand-off:** the chatbot says it is an AI, cites its articles, says "I don't know" when the articles don't cover the question, never promises times or refunds, and offers "Talk to a human" (a normal ticket) at any time.
+
+### Quality gates
+
+`./vendor/bin/pint --test` · `phpstan analyse` (Larastan, level 7) · `npx tsc --noEmit` (strict, no `any`) · `php artisan test` on MySQL. `composer test` runs Pint, Larastan and Pest together.
+
+### Trade-offs and what I'd do next
+
+- **Database queue, not Redis/Horizon** — no extra service to run for an assessment; Redis + Horizon is the first change for real load (the Docker stack already has Redis).
+- **MySQL FULLTEXT, not Meilisearch/vector search** — good enough at this size and needs no extra service; the repository interfaces are the swap points.
+- **SLA clock doesn't pause on `waiting_for_customer`** — a documented v1 choice; the columns for it are planned (`docs/ARCHITECTURE.md` §8.2).
+- **Next:** the `sla:scan` index above, a Pest stage in the Jenkins pipeline, auto-close of resolved tickets, a read replica for reports.
+
 ## Project structure
+
 See `docs/CODING_STRUCTURE.md`.

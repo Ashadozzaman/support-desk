@@ -44,5 +44,5 @@ yarn-error.log
 /opencode.json
 /opencode.jsonc
 .CLAUDE.md
-/docs
+/docs/notes/
 .env.docker

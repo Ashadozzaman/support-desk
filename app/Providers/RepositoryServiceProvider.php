@@ -4,13 +4,20 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Contracts\Ai\AiClient;
 use App\Contracts\Assignment\AssignmentStrategy;
+use App\Contracts\Inbound\MailboxClient;
 use App\Contracts\Repositories\ActivityRepositoryInterface;
 use App\Contracts\Repositories\AgentRepositoryInterface;
+use App\Contracts\Repositories\AiInteractionRepositoryInterface;
 use App\Contracts\Repositories\AttachmentRepositoryInterface;
 use App\Contracts\Repositories\AuditLogRepositoryInterface;
+use App\Contracts\Repositories\ChatRepositoryInterface;
 use App\Contracts\Repositories\DashboardRepositoryInterface;
 use App\Contracts\Repositories\ImportRepositoryInterface;
+use App\Contracts\Repositories\InboundMessageRepositoryInterface;
+use App\Contracts\Repositories\KnowledgeBaseRepositoryInterface;
+use App\Contracts\Repositories\MailboxRepositoryInterface;
 use App\Contracts\Repositories\ReplyRepositoryInterface;
 use App\Contracts\Repositories\ReportExportRepositoryInterface;
 use App\Contracts\Repositories\ReportRepositoryInterface;
@@ -20,10 +27,15 @@ use App\Contracts\Repositories\TicketRepositoryInterface;
 use App\Contracts\Repositories\UserRepositoryInterface;
 use App\Repositories\Eloquent\ActivityRepository;
 use App\Repositories\Eloquent\AgentRepository;
+use App\Repositories\Eloquent\AiInteractionRepository;
 use App\Repositories\Eloquent\AttachmentRepository;
 use App\Repositories\Eloquent\AuditLogRepository;
+use App\Repositories\Eloquent\ChatRepository;
 use App\Repositories\Eloquent\DashboardRepository;
 use App\Repositories\Eloquent\ImportRepository;
+use App\Repositories\Eloquent\InboundMessageRepository;
+use App\Repositories\Eloquent\KnowledgeBaseRepository;
+use App\Repositories\Eloquent\MailboxRepository;
 use App\Repositories\Eloquent\ReplyRepository;
 use App\Repositories\Eloquent\ReportExportRepository;
 use App\Repositories\Eloquent\ReportRepository;
@@ -31,8 +43,12 @@ use App\Repositories\Eloquent\RoleRepository;
 use App\Repositories\Eloquent\SlaConfigRepository;
 use App\Repositories\Eloquent\TicketRepository;
 use App\Repositories\Eloquent\UserRepository;
+use App\Support\Ai\AnthropicClient;
+use App\Support\Ai\FakeAiClient;
+use App\Support\Ai\OpenAiClient;
 use App\Support\Assignment\LeastWorkloadStrategy;
 use App\Support\Assignment\RoundRobinStrategy;
+use App\Support\Inbound\WebklexMailboxClient;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 
@@ -58,12 +74,34 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(AuditLogRepositoryInterface::class, AuditLogRepository::class);
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
         $this->app->bind(RoleRepositoryInterface::class, RoleRepository::class);
+        $this->app->bind(KnowledgeBaseRepositoryInterface::class, KnowledgeBaseRepository::class);
+        $this->app->bind(AiInteractionRepositoryInterface::class, AiInteractionRepository::class);
+        $this->app->bind(ChatRepositoryInterface::class, ChatRepository::class);
+        $this->app->bind(InboundMessageRepositoryInterface::class, InboundMessageRepository::class);
+        $this->app->bind(MailboxRepositoryInterface::class, MailboxRepository::class);
+
+        // Tests swap in FakeMailboxClient; nothing else talks IMAP.
+        $this->app->bind(MailboxClient::class, WebklexMailboxClient::class);
 
         // Strategy selected from config, not hard-coded (ARCHITECTURE.md §6.2 OCP note).
         $this->app->bind(AssignmentStrategy::class, function (Application $app) {
             return match (config('support.assignment.strategy')) {
                 'round_robin' => $app->make(RoundRobinStrategy::class),
                 default => $app->make(LeastWorkloadStrategy::class),
+            };
+        });
+
+        // Real provider only when AI is on *and* configured for it; otherwise
+        // the deterministic fake, so dev/CI/tests never need a key (ENHANCEMENTS.md §3.1).
+        $this->app->bind(AiClient::class, function (Application $app) {
+            if (! config('ai.enabled')) {
+                return $app->make(FakeAiClient::class);
+            }
+
+            return match (config('ai.provider')) {
+                'anthropic' => $app->make(AnthropicClient::class),
+                'openai' => $app->make(OpenAiClient::class),
+                default => $app->make(FakeAiClient::class),
             };
         });
     }

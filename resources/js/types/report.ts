@@ -10,7 +10,8 @@ export type ReportTab =
     | 'response'
     | 'agents'
     | 'aging'
-    | 'categories';
+    | 'categories'
+    | 'ai';
 
 export type ReportGranularity = 'day' | 'week' | 'month';
 
@@ -122,6 +123,25 @@ export type CategoryReportRow = {
     breach_rate_pct: number | null;
 };
 
+export type AiReport = {
+    chats: {
+        total: number;
+        handed_off: number;
+        closed: number;
+        active: number;
+        /** Closed without a ticket ÷ all conversations; null when there were none. */
+        deflection_pct: number | null;
+    };
+    calls: {
+        total: number;
+        succeeded: number;
+        refused: number;
+        failed: number;
+        tokens: number;
+        avg_latency_ms: number | null;
+    };
+};
+
 export type ReportData = {
     overview: OverviewReport;
     sla: SlaReport;
@@ -129,4 +149,5 @@ export type ReportData = {
     agents: AgentReportRow[];
     aging: AgingReport;
     categories: CategoryReportRow[];
+    ai: AiReport;
 };

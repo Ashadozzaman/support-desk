@@ -11,6 +11,7 @@ const TABS: { tab: ReportTab; label: string }[] = [
     { tab: 'agents', label: 'Agents' },
     { tab: 'aging', label: 'Aging' },
     { tab: 'categories', label: 'Categories' },
+    { tab: 'ai', label: 'AI assistant' },
 ];
 
 /**

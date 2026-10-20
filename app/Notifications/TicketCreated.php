@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Models\Ticket;
+use App\Services\TicketEmailThreadService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
@@ -42,10 +43,12 @@ class TicketCreated extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject("New ticket {$this->ticket->ticket_number}")
             ->line("A new ticket has been created: \"{$this->ticket->subject}\".")
             ->action('View ticket', route('tickets.show', $this->ticket->ticket_number));
+
+        return app(TicketEmailThreadService::class)->thread($mail, $this->ticket, $notifiable);
     }
 
     /**

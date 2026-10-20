@@ -36,6 +36,7 @@ enum AuditEvent: string
     case RoleCreated = 'admin.role_created';
     case RoleUpdated = 'admin.role_updated';
     case RoleDeleted = 'admin.role_deleted';
+    case MailboxSettingsUpdated = 'admin.mailbox_settings_updated';
 
     public const LOG_AUTH = 'auth';
 
@@ -75,6 +76,7 @@ enum AuditEvent: string
             self::RoleCreated => 'Role created',
             self::RoleUpdated => 'Role updated',
             self::RoleDeleted => 'Role deleted',
+            self::MailboxSettingsUpdated => 'Mailbox settings updated',
         };
     }
 

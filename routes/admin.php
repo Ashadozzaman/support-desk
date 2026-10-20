@@ -5,6 +5,8 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BusinessHourController;
 use App\Http\Controllers\Admin\HolidayController;
 use App\Http\Controllers\Admin\ImportController;
+use App\Http\Controllers\Admin\KbArticleController;
+use App\Http\Controllers\Admin\MailboxController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SlaPolicyController;
 use App\Http\Controllers\Admin\SystemHealthController;
@@ -55,6 +57,23 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
 
         Route::post('holidays', [HolidayController::class, 'store'])->name('holidays.store');
         Route::delete('holidays/{holiday}', [HolidayController::class, 'destroy'])->name('holidays.destroy');
+    });
+
+    Route::middleware('permission:knowledge-base.manage')->group(function () {
+        Route::get('kb-articles', [KbArticleController::class, 'index'])->name('kb-articles.index');
+        Route::get('kb-articles/create', [KbArticleController::class, 'create'])->name('kb-articles.create');
+        Route::post('kb-articles', [KbArticleController::class, 'store'])->name('kb-articles.store');
+        Route::get('kb-articles/{article}/edit', [KbArticleController::class, 'edit'])->name('kb-articles.edit');
+        Route::put('kb-articles/{article}', [KbArticleController::class, 'update'])->name('kb-articles.update');
+        Route::delete('kb-articles/{article}', [KbArticleController::class, 'destroy'])->name('kb-articles.destroy');
+    });
+
+    Route::middleware('permission:mailbox.manage')->group(function () {
+        Route::get('mailbox', [MailboxController::class, 'edit'])->name('mailbox.edit');
+        Route::put('mailbox', [MailboxController::class, 'update'])->name('mailbox.update');
+        // Each one opens a connection to the mail server.
+        Route::post('mailbox/test', [MailboxController::class, 'test'])->middleware('throttle:10,1')->name('mailbox.test');
+        Route::post('mailbox/sync', [MailboxController::class, 'sync'])->middleware('throttle:10,1')->name('mailbox.sync');
     });
 
     Route::middleware('permission:imports.manage')->group(function () {

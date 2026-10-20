@@ -9,6 +9,8 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('tickets:auto-assign')->everyMinute()->withoutOverlapping(5)->onOneServer();
+// Queues a sync only when the admin's fetch interval has passed (docs/IMAP.md).
+Schedule::command('mailbox:sync')->everyMinute()->withoutOverlapping(5)->onOneServer();
 Schedule::command('sla:scan')->everyMinute()->withoutOverlapping(5)->onOneServer();
 Schedule::command('dashboard:warm-cache')->everyThirtySeconds()->withoutOverlapping(5)->onOneServer();
 // Report rollups (ENHANCEMENTS.md §1.2): today stays ≤ 15 min stale;

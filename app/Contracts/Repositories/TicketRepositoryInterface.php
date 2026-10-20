@@ -21,12 +21,23 @@ interface TicketRepositoryInterface
 
     public function findByNumberOrFail(string $ticketNumber): Ticket;
 
+    public function findByNumber(string $ticketNumber): ?Ticket;
+
     /**
      * @return LengthAwarePaginator<int, Ticket>
      */
     public function paginateFor(User $viewer, string $tab, TicketFilterData $filters, int $perPage = 15): LengthAwarePaginator;
 
     public function countActiveForAgent(int $agentId): int;
+
+    /**
+     * Tickets the viewer may see that were resolved in [from, to), newest
+     * resolution first, list columns only, with the total count — for the
+     * staff data assistant ("what was resolved today?").
+     *
+     * @return array{total: int, tickets: Collection<int, Ticket>}
+     */
+    public function resolvedBetweenFor(User $viewer, CarbonImmutable $from, CarbonImmutable $to, int $limit): array;
 
     public function update(Ticket $ticket, UpdateTicketData $data, ?CarbonImmutable $slaDueAt, ?CarbonImmutable $slaWarningAt): Ticket;
 

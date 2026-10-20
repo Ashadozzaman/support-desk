@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\ChatNotActiveException;
 use App\Exceptions\InvalidApiCredentialsException;
 use App\Exceptions\InvalidStatusTransitionException;
 use App\Exceptions\ProtectedRoleException;
@@ -7,6 +8,7 @@ use App\Exceptions\TicketAlreadyAssignedException;
 use App\Exceptions\UserLockoutException;
 use App\Http\Controllers\HealthController;
 use App\Http\Middleware\AssignRequestContext;
+use App\Http\Middleware\EnsureAiEnabled;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\ForceJsonResponse;
 use App\Http\Middleware\HandleAppearance;
@@ -61,6 +63,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'ai.enabled' => EnsureAiEnabled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -109,6 +112,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]));
         $exceptions->map(InvalidApiCredentialsException::class, fn (InvalidApiCredentialsException $e) => ValidationException::withMessages([
             $e->field => $e->getMessage(),
+        ]));
+        $exceptions->map(ChatNotActiveException::class, fn (ChatNotActiveException $e) => ValidationException::withMessages([
+            'chat' => $e->getMessage(),
         ]));
         $exceptions->map(ProtectedRoleException::class, fn (ProtectedRoleException $e) => ValidationException::withMessages([
             $e->field => $e->getMessage(),

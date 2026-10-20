@@ -11,6 +11,7 @@ use App\Enums\ActivityEvent;
 use App\Enums\ImportStatus;
 use App\Enums\Permission;
 use App\Enums\TicketPriority;
+use App\Enums\TicketSource;
 use App\Events\ImportProgressUpdated;
 use App\Models\Category;
 use App\Models\Import;
@@ -141,6 +142,7 @@ class ProcessTicketImportJob implements ShouldQueue
                         categoryId: $row['category_id'],
                         createdBy: $row['customer_id'],
                         externalRef: $row['external_ref'],
+                        source: TicketSource::Import,
                     );
 
                     $window = $sla->calculate($data->priority, now());

@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             CategorySeeder::class,
             SlaPolicySeeder::class,
             BusinessHourSeeder::class,
+            KbArticleSeeder::class,
             DemoUsersSeeder::class,
             DemoTicketSeeder::class,
         ]);
